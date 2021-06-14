@@ -1,0 +1,1 @@
+cmd /c C:\xampp\php\php index.php welcome check_setup_details

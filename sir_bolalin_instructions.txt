@@ -1,0 +1,2 @@
+1. ps aux | grep php //check if php index.php srs auto auto_purchaser is running, dont run sh create_po.sh
+2. pakigaya ung setup ng nova migrator sa lahat ng branch, wag kalimutan ung pagchchange ng config sa application/config/constants.php
