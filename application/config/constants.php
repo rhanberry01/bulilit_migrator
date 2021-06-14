@@ -29,7 +29,7 @@ define('DIR_WRITE_MODE', 0755);
 |
 */
 define("SRS_MAIN_BRANCH", "192.168.0.133");
-define("SRS_MAIN_DATABASE", "SPALAY");
+define("SRS_MAIN_DATABASE", "SPALAY_");
 define("SRS_BRANCH_DATABASE", "SBPALAY");
 define("PR_TRANS", 15);
 define("BRANCH_USE", "SRSPALAY");
