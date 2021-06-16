@@ -208,7 +208,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 			$this->db->where('vendor_products.ProductID =',$item_code);
 		}
 		if($sup_code != null)
-			$this->db->where('vendor_products.VendorCode =',$sup_code);
+			//$this->db->where('vendor_products.VendorCode =',$sup_code);
 		//$this->db->limit(1);
 		$this->db->order_by('vendor_products.Description');
 		$query =  $this->db->get();
