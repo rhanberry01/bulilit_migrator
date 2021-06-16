@@ -310,7 +310,6 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         echo "Set Settings" . PHP_EOL;  
         $this->create_purchase_request();
         echo "Set Form" . PHP_EOL;  
-       
         $this->save_po($sf);
         echo "Set Save" . PHP_EOL;
     }

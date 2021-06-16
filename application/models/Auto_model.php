@@ -179,7 +179,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
   public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
 		$this->db = $this->load->database($this->local_db, TRUE);
 		$exclude_db = $this->load->database("default", true);
-		$exclude_db->where("VendorCode", $sup_code);
+	//	$exclude_db->where("VendorCode", $sup_code);
 		$exclude_db->select("ProductID");
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
@@ -189,7 +189,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 					  vendor_products.Description,
 					  vendor_products.ProductID,
 					  products.ProductCode,
-					  vendor_products.VendorCode,
+					  "SANROB001" as VendorCode,
 					  vendor_products.uom,
 					  vendor_products.cost,
 					  vendor_products.discountcode1,
@@ -208,7 +208,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 			$this->db->where('vendor_products.ProductID =',$item_code);
 		}
 		if($sup_code != null)
-			//$this->db->where('vendor_products.VendorCode =',$sup_code);
+		//	$this->db->where('vendor_products.VendorCode =',$sup_code);
 		//$this->db->limit(1);
 		$this->db->order_by('vendor_products.Description');
 		$query =  $this->db->get();
