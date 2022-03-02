@@ -595,7 +595,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                 }
             } 
         }
-        $this->throw_po();
+      //  $this->throw_po();
         echo date("Y-m-d h:i:s").PHP_EOL;
        
     }
