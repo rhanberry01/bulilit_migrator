@@ -203,7 +203,8 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		  $this->db->where('products.inactive',0);
 		  $this->db->where('products.sellingarea != ',0);
 		$this->db->where('vendor_products.defa',1);
-		if(!empty($items))  $this->db->where_not_in("vendor_products.ProductID", $items);
+		$this->db->where_in("vendor_products.ProductID", '24373');
+	//	if(!empty($items))  $this->db->where_not_in("vendor_products.ProductID", $items);
 		if($item_code != null){
 			$this->db->where('vendor_products.ProductID =',$item_code);
 		}
