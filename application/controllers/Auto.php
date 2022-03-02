@@ -801,9 +801,9 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
     $now =   date('Y-m-d');
     $past_date = date('Y-m-d', strtotime('-30 days'));
-    $dates = getDatesFromRange($past_date,  $now);
+    $dates = getDatesFromRange($past_date, $now);
     echo var_dump($dates);
-    
+
    /* if($date==null) $date = date("Y-m-d", strtotime("-1 day"));
     echo "Create Product History ".$date.PHP_EOL;
     $this->auto->delete_product_history($date);
