@@ -424,8 +424,11 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             foreach ($divs as $des) {
                 if(isset($item[$des->product_id])){
                     $item[$des->product_id]['divisor'] = $des->divisor;
+                    echo  $item[$des->product_id]['divisor'].PHP_EOL;
                     $item[$des->product_id]['total_sales'] = $des->total_sales/$item[$des->product_id]['qty_by'];
+                    echo  $des->total_sales.'/'.$item[$des->product_id]['qty_by'].PHP_EOL;
                     $avg_off_take = ($item[$des->product_id]['total_sales'])/$item[$des->product_id]['divisor'];
+                    echo  '('.$item[$des->product_id]['total_sales'].')/'.$item[$des->product_id]['divisor'].PHP_EOL;
                     $avg_off_take = number_format($avg_off_take, 2, '.', '');//round($avg_off_take,2);
 
                     $filter_off_take = 0;

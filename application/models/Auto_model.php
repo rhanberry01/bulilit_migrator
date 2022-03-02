@@ -183,7 +183,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$exclude_db->select("ProductID");
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
-		$items = array();
+		$items = array('24373');
 		foreach($exclude_items as $index => $it) array_push($items, $it["ProductID"]);
 		$this->db->select('vendor_products.VendorProductCode,
 					  vendor_products.Description,
