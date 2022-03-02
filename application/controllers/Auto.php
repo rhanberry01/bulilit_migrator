@@ -774,8 +774,37 @@ provided that both dates are after 1970. Also only works for dates up to the yea
     
   }  
 
+ public function getDatesFromRange($start, $end, $format = 'Y-m-d') {
+      
+    // Declare an empty array
+    $array = array();
+      
+    // Variable that store the date interval
+    // of period 1 day
+    $interval = new DateInterval('P1D');
+  
+    $realEnd = new DateTime($end);
+    $realEnd->add($interval);
+  
+    $period = new DatePeriod(new DateTime($start), $interval, $realEnd);
+  
+    // Use loop to store date into array
+    foreach($period as $date) {                 
+        $array[] = $date->format($format); 
+    }
+  
+    // Return the array elements
+    return $array;
+}
+
   public function create_product_history($date = null){
-    if($date==null) $date = date("Y-m-d", strtotime("-1 day"));
+
+    $now =   date('Y-m-d');
+    $past_date = date('Y-m-d', strtotime('-30 days'));
+    $dates = getDatesFromRange($past_date,  $now);
+    echo var_dump($dates);
+    
+   /* if($date==null) $date = date("Y-m-d", strtotime("-1 day"));
     echo "Create Product History ".$date.PHP_EOL;
     $this->auto->delete_product_history($date);
     $record = $this->auto->get_item_total_sales($date); 
@@ -783,6 +812,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
     $wholesale = $this->auto->update_excluded_wholesale($date);
     if(count($wholesale) > 0)  echo "Wholesale Update ".$date.PHP_EOL;
     $this->auto->update_wholesale($wholesale, $date);
+    */
   }
 
 
