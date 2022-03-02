@@ -809,7 +809,9 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                 $wholesale = $this->auto->update_excluded_wholesale($date);
                 if(count($wholesale) > 0)  echo "Wholesale Update ".$date.PHP_EOL;
                 $this->auto->update_wholesale($wholesale, $date);
+                echo "success";
             }
+            echo "done!";
     }
 
   public function create_product_history($date = null){
