@@ -802,10 +802,8 @@ provided that both dates are after 1970. Also only works for dates up to the yea
     $now =   date('Y-m-d');
     $past_date = date('Y-m-d', strtotime('-30 days'));
     $dates = $this->getDatesFromRange($past_date, $now);
-    $num=0;
-    foreach ($dates as $d){
-        echo $d[$num];
-     $num++;
+    foreach ($dates as $date){
+        echo  $date;
     }
 
    /* if($date==null) $date = date("Y-m-d", strtotime("-1 day"));
