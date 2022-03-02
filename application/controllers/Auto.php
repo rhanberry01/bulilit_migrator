@@ -423,7 +423,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
             foreach ($divs as $des) {
                 if(isset($item[$des->product_id])){
-                    
+
                     $item[$des->product_id]['divisor'] = $des->divisor;
                     echo  $item[$des->product_id]['divisor'].PHP_EOL;
                     $item[$des->product_id]['total_sales'] = $des->total_sales/$item[$des->product_id]['qty_by'];
@@ -431,6 +431,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     $avg_off_take = ($item[$des->product_id]['total_sales'])/$item[$des->product_id]['divisor'];
                     echo '('.$item[$des->product_id]['total_sales'].')/'.$item[$des->product_id]['divisor'].PHP_EOL;
                     $avg_off_take = number_format($avg_off_take, 2, '.', '');//round($avg_off_take,2);
+                    echo 'ave:'.$avg_off_take;
 
                     $filter_off_take = 0;
                     $filter_sales = 0;
@@ -445,7 +446,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     if ($item[$des->product_id]['total_sales'] < $filter_sales) $sugg_po  = 0;
                     $sugg_po = ceil($sugg_po-$rounding_off);
                     if($sugg_po < 0) $sugg_po  = 0;
-
+                    echo 'sugg:'.$sugg_po;
                     if(in_array(strtolower($item[$des->product_id]['uom']), $uom_piece)){
                         $qty_times = $min_purchase_piece;
                         $sugg_po = $sugg_po/$qty_times;
