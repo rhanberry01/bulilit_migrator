@@ -474,7 +474,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 */
 
 		$this->db = $this->load->database("default", true);
-		$this->db->select("product_history.product_id,'30' as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
+		$this->db->select("product_history.product_id,'7' as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
 		$this->db->from('product_history');
 			
 		$this->db->where('product_history.date_posted >=',$from);	
