@@ -406,7 +406,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $item[$res->ProductID] = $det;
             $se_items[] = $res->ProductID;
         }
-        echo $from.'---'.$to;
+        
         $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
         $case_order_piece = 0;
@@ -424,11 +424,8 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             foreach ($divs as $des) {
                 if(isset($item[$des->product_id])){
                     $item[$des->product_id]['divisor'] = $des->divisor;
-                    echo  $item[$des->product_id]['divisor'].PHP_EOL;
                     $item[$des->product_id]['total_sales'] = $des->total_sales/$item[$des->product_id]['qty_by'];
-                    echo  $des->total_sales.'/'.$item[$des->product_id]['qty_by'].PHP_EOL;
                     $avg_off_take = ($item[$des->product_id]['total_sales'])/$item[$des->product_id]['divisor'];
-                    echo  '('.$item[$des->product_id]['total_sales'].')/'.$item[$des->product_id]['divisor'].PHP_EOL;
                     $avg_off_take = number_format($avg_off_take, 2, '.', '');//round($avg_off_take,2);
 
                     $filter_off_take = 0;
@@ -598,7 +595,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                 }
             } 
         }
-      //  $this->throw_po();
+        $this->throw_po();
         echo date("Y-m-d h:i:s").PHP_EOL;
        
     }
