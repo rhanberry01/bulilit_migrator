@@ -406,7 +406,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $item[$res->ProductID] = $det;
             $se_items[] = $res->ProductID;
         }
-
+        echo $from.'---'.$to;
         $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
         $case_order_piece = 0;
