@@ -799,7 +799,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
     public function multiple_create_product_history($date = null){
         $now =   date('Y-m-d');
-        $past_date = date('Y-m-d', strtotime('-30 days'));
+        $past_date = date('Y-m-d', strtotime('-10 days'));
         $dates = $this->getDatesFromRange($past_date, $now);
             foreach ($dates as $date){
                 echo "Create Product History ".$date.PHP_EOL;
