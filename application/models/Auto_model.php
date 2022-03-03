@@ -123,6 +123,7 @@ class Auto_model extends CI_Model {
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
 		$items = array();
+		$excludes_category = array('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
 		foreach($exclude_items as $index => $it) array_push($items, $it["ProductID"]);
 		
 		$this->db->select('vendor_products.VendorProductCode,
@@ -146,7 +147,7 @@ class Auto_model extends CI_Model {
 		$this->db->join('vendor','vendor.vendorcode = vendor_products.VendorCode');
 		$this->db->join('pos_products','vendor_products.ProductID = pos_products.ProductID AND vendor_products.uom = pos_products.uom');
         if(!empty($items))  $this->db->where_not_in("vendor_products.ProductID", $items);
-		       
+		$this->db->where_not_in("products.LevelField1", $excludes_category);
 		$this->db->where('products.inactive =','0');
                 $this->db->where('vendor_products.defa =', 1);
 		$this->db->where_in('vendor_products.ProductID',$item_code);
