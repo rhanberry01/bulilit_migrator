@@ -430,7 +430,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                    // echo $des->total_sales.'/'.$item[$des->product_id]['qty_by'].PHP_EOL;
                     $avg_off_take = ($item[$des->product_id]['total_sales'])/$item[$des->product_id]['divisor'];
                    // echo '('.$item[$des->product_id]['total_sales'].')/'.$item[$des->product_id]['divisor'].PHP_EOL;
-                    $avg_off_take = number_format($avg_off_take, 2, '.', '');//round($avg_off_take,2);
+                    $avg_off_take = number_format($avg_off_take, 3, '.', '');//round($avg_off_take,2);
                    // echo 'ave:'.$avg_off_take;
 
                     $filter_off_take = 0;
@@ -440,9 +440,12 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
                     $item[$des->product_id]['avg_off_take'] = $avg_off_take;
                     $qoh_ = $item[$des->product_id]['qoh'] > 0 ? $item[$des->product_id]['qoh'] : 0;
+
+                    $qoh_ = number_format($qoh_, 3, '.', '');
+
                     $sugg_po = (($avg_off_take > $filter_off_take ? $avg_off_take : 0)*
                             $item[$des->product_id]['avg_off_take_x']) - $qoh_;
-
+                    
                     if ($item[$des->product_id]['total_sales'] < $filter_sales) $sugg_po  = 0;
                     $sugg_po = ceil($sugg_po-$rounding_off);
                     if($sugg_po < 0) $sugg_po  = 0;

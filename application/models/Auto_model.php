@@ -181,6 +181,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$this->db = $this->load->database($this->local_db, TRUE);
 		$exclude_db = $this->load->database("default", true);
 	//	$exclude_db->where("VendorCode", $sup_code);
+		$excludes_category = array('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
 		$exclude_db->select("ProductID");
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
@@ -204,6 +205,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		  $this->db->where('products.inactive',0);
 		  $this->db->where('products.sellingarea != ',0);
 		$this->db->where('vendor_products.defa',1);
+		$this->db->where_not_in("products.LevelField1", $excludes_category);
 		if(!empty($items))  $this->db->where_not_in("vendor_products.ProductID", $items);
 		if($item_code != null){
 			$this->db->where('vendor_products.ProductID =',$item_code);
