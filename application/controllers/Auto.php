@@ -19,7 +19,7 @@ class Auto extends CI_Controller {
         date_default_timezone_set('Asia/Manila');
         $real_date = date("Y-m-d");
 $to = date("Y-m-d",strtotime($real_date .' -1 days'));
-$from = date("Y-m-d",strtotime($to .' -7 days'));
+$from = date("Y-m-d",strtotime($to .' -6 days'));
 define("FROM", $from);
 define("TO", $to);
         $this->load->model("Auto_model", "auto");
