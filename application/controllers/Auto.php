@@ -19,7 +19,7 @@ class Auto extends CI_Controller {
         date_default_timezone_set('Asia/Manila');
         $real_date = date("Y-m-d");
 $to = date("Y-m-d",strtotime($real_date .' -1 days'));
-$from = date("Y-m-d",strtotime($to .' -6 days'));
+$from = date("Y-m-d",strtotime($to .' -9 days'));
 define("FROM", $from);
 define("TO", $to);
         $this->load->model("Auto_model", "auto");
@@ -395,7 +395,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['avg_off_take'] = 0;
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
 
-            $det['avg_off_take_x'] =  10; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
+            $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
             $det['sugg_po'] = $sugg_po;
             $det['qty'] = $qty;
