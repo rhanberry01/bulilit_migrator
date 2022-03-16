@@ -181,7 +181,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$this->db = $this->load->database($this->local_db, TRUE);
 		$exclude_db = $this->load->database("default", true);
 	//	$exclude_db->where("VendorCode", $sup_code);
-		$excludes_category = array('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
+		$excludes_category = array('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
 		$exclude_db->select("ProductID");
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
