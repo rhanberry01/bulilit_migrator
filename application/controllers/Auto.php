@@ -817,22 +817,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
     return $array;
 }
 
-    public function multiple_create_product_history($date = null){
-        $now =   date('Y-m-d');
-        $past_date = date('Y-m-d', strtotime('-10 days'));
-        $dates = $this->getDatesFromRange($past_date, $now);
-            foreach ($dates as $date){
-                echo "Create Product History ".$date.PHP_EOL;
-                $this->auto->delete_product_history($date);
-                $record = $this->auto->get_item_total_sales($date); 
-                $this->auto->insert_prod_history_summary_sales($record, $date);
-                $wholesale = $this->auto->update_excluded_wholesale($date);
-                if(count($wholesale) > 0)  echo "Wholesale Update ".$date.PHP_EOL;
-                $this->auto->update_wholesale($wholesale, $date);
-                echo "success".PHP_EOL;
-            }
-            echo "done!".PHP_EOL;
-    }
+
 
   public function create_product_history($date = null){
 
