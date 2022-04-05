@@ -145,6 +145,23 @@ define("TO", $to);
 
       }
 
+      public function multiple_create_product_history(){
+        $now =   date('Y-m-d');
+        $past_date = date('Y-m-d', strtotime('-20 days'));
+        $dates = $this->getDatesFromRange($past_date, $now);
+            foreach ($dates as $date){
+                echo "Create Product History ".$date.PHP_EOL;
+                $this->auto->delete_product_history($date);
+                $record = $this->auto->get_item_total_sales($date); 
+                $this->auto->insert_prod_history_summary_sales($record, $date);
+                $wholesale = $this->auto->update_excluded_wholesale($date);
+                if(count($wholesale) > 0)  echo "Wholesale Update ".$date.PHP_EOL;
+                $this->auto->update_wholesale($wholesale, $date);
+                echo "success".PHP_EOL;
+            }
+            echo "done!".PHP_EOL;
+    }
+
   public function create_total_over_stock_report( $from , $to){
         $sort = $this->sort;
         $rows = $this->rows;
