@@ -205,7 +205,7 @@ define("TO", $to);
       
       public function multiple_create_product_history(){
         $now =   date('Y-m-d');
-        $past_date = date('Y-m-d', strtotime('-60 days'));
+        $past_date = date('Y-m-d', strtotime('-5 days'));
         $dates = $this->getDatesFromRange($past_date, $now);
             foreach ($dates as $date){
                 echo "Create Product History ".$date.PHP_EOL;
