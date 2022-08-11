@@ -7,6 +7,8 @@ class Auto_model extends CI_Model {
     public function __construct(){
 		parent::__construct();
 		$this->local_db = "branch_nova";
+		$this->main_db = "main_branch_mysql";
+		$this->pricing_db = "pricing_db";
 		$this->customer_code = $this->get_customer_code();
 
 	}
@@ -23,6 +25,50 @@ class Auto_model extends CI_Model {
 	    return $res;
 	 }
 	 
+	 public function insert_header($data = array()){ 
+		$this->db = $this->load->database("mysql_fran_db", true);
+		$this->db->insert('0_transfer_header', $data);
+  		 $insert_id = $this->db->insert_id();
+		 return  $insert_id;
+	 }
+
+	 function insert_batch_details($data=array()){
+		$this->db = $this->load->database("mysql_fran_db", True);
+		$this->db->insert_batch("0_transfer_details", $data);
+	}
+	 
+
+	 public function get_res_for_trans($TransactionNo,$TerminalNo){ 
+		//$this->db = $this->load->database("mysql_pos_db_franchisee", true);
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "select ProductID as stock_id,ProductID as stock_id_2,Description as description ,Barcode as barcode,UOM as uom,Price as cost ,price as net_of_vat ,sum(Qty) as qty_out, sum(Qty) as actual_qty_out 
+		from tfinishedsales where TransactionNo='".$TransactionNo."' and TerminalNo ='".$TerminalNo."'
+		and Voided = 0 and `Return` = 0
+		GROUP BY productID,ProductID,Description,Barcode,UOM,Price,price
+		ORDER BY UOM";
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
+	 }
+	 public function get_unprocessed_transfer_fr(){
+		 $branch_name = BRANCH_NAME;
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "select id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
+				WHERE transferstatus ='0' and TransactionNo is not null and customer_name like '%$branch_name%' ";
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
+		
+	 }
+
+	 public function update_pos_order_stat($id){
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "UPDATE order_header_franchisee SET transferstatus = 1 where id =".$id." ";
+		$res = $this->db->query($sql);
+		
+	 }
+
+
 	  public function upd_gulay_price($rows, $date_){
     	$this->db= $this->load->database("branch_nova", true);
     	foreach($rows as $row)
@@ -131,6 +177,7 @@ class Auto_model extends CI_Model {
 					  vendor_products.ProductID,
 					  products.ProductCode,
 					  vendor_products.VendorCode,
+					  CASE WHEN products.LevelField1Code = 9019 THEN 0.995 ELSE 0.98 END as srs_percentage, 
 					  vendor.description as vendor_description,
 					  vendor_products.uom,
 					  vendor_products.cost,
@@ -175,9 +222,42 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		return $query->result();
 	}
 
+	public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
+		$this->db = $this->load->database($this->main_db, TRUE);
+		$sql = "
+		select 
+		fs.Description as Description, 
+		fs.ProductID as ProductID, 
+		fs.Barcode as ProductCode, 
+		'SANROB001' as VendorCode,
+		fs.UOM as uom, 
+		fs.AverageUnitCost as cost, 
+		'' as discountcode1,
+		'' as  discountcode2,
+		'' as discountcode3,
+		pp.sellingarea as StockRoom,
+		fs.Packing as reportqty,
+		pp.srs_percentage
+		from 
+		(select  ProductID,Barcode,Description,uom,Packing,AverageUnitCost,Price From tfinishedsales
+			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+			AND (ProductID, Packing) IN(
+			select  ProductID,MIN(Packing)From tfinishedsales
+			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+			GROUP BY ProductID)
+			GROUP BY ProductID ORDER BY productid) as fs
+		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.995 ELSE 0.98 END as srs_percentage  from  products where LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and inactive = 0) as pp
+		on fs.ProductID = pp.productid
+		ORDER BY Description";
+		
 
+		$res = $this->db->query($sql);
+		$res = $res->result();
+		return $res;
 
-  public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
+	}
+
+ /* public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
 		$this->db = $this->load->database($this->local_db, TRUE);
 		$exclude_db = $this->load->database("default", true);
 	//	$exclude_db->where("VendorCode", $sup_code);
@@ -218,7 +298,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		 // echo $this->db->last_query();
 		return $query->result();
 	}
-
+*/
 
 	public function get_vendor_products($code){
 		$this->db = $this->load->database($this->local_db, TRUE);
@@ -308,7 +388,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		ORDER BY a.Description";
 
 		$res = $this->db->query($sql);
-	    $res = $res->result_array();
+	    $res = $res->result();
 	    return $res;
     }
 
@@ -405,76 +485,44 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 			$this->db->insert("auto_purchase", array("date_added"=>date("Y-m-d"),"branch"=>$branch, "supplier"=>$supplier, "user_id" => $user_id, "po_head" => $head, "po_details" =>$items, "auto_po" => $auto_po ) );
 	}
 
+	public function get_franchise_cost($items=array()){
+		
+        $this->db = $this->load->database($this->pricing_db, TRUE);
+		$sql ="SELECT p.ProductID,
+		CASE WHEN p.CostOfSales = 0 THEN vp.Averagenetcost ELSE p.CostOfSales END as CostOfSales
+		 FROM [dbo].[Products] as p
+		left JOIN VENDOR_Products as vp
+		on p.ProductID = vp.ProductID and defa = 1
+		where p.ProductID in (".$items.") ";
+		$res = $this->db->query($sql);
+		$res = $res->result_array();
+      return $res;
+    }
+
+	
+	public function get_max_fr_id(){
+		
+        $this->db = $this->load->database('mysql_pos_db', TRUE);
+		$sql ="SELECT (CASE WHEN isnull(max(order_id)) THEN 0 ELSE max(order_id) END)+1 as order_id FROM `order_header_franchisee`;";
+		$res = $this->db->query($sql);
+		$res = $res->row();
+      return $res->order_id;
+    }
+
+	function insert_batch($data=array()){
+		$this->db = $this->load->database("mysql_pos_db", True);
+		$this->db->insert_batch("order_details_franchisee", $data);
+	}
+
+	function insert($data=array()){
+		$this->db = $this->load->database("mysql_pos_db", True);
+		$this->db->insert("order_header_franchisee", $data);
+	}
+
+
 
 	function get_srs_items_po_divisor($from,$to,$items=array()){
-		//$this->db = $this->load->database($this->local_db, TRUE);
-		/*$query ="
-			SELECT 
-				wo.ProductID as product_id,  
-				wo.total_sales - isnull(w.total_sales,0) as total_sales,
-				'30' as divisor 
-			from
-				(
-					SELECT 
-						[b].[ProductID], 
-						sum(b.TotalQty) as total_sales 
-					FROM [FinishedSales] [b] 
-					JOIN [FinishedTransaction] [a] ON 
-					[a].[TransactionNo] = [b].[TransactionNo] AND 
-					[a].[TerminalNo] = [b].[TerminalNo]
-					WHERE 
-						CAST(a.LogDate as DATE) >= '".$from."' AND 
-						CAST(a.LogDate as DATE) <= '".$to."' AND 
-						[b].[ProductID]  IN (".implode(",",$items).")
-						AND a.Voided =0 AND b.Voided =0 AND b.[Return] = 0
-					Group By ProductID
-				) wo 
-			LEFT JOIN 
-			(
-					SELECT 
-						[b].[ProductID], 
-						sum(b.TotalQty) as total_sales 
-					FROM [FinishedSales] [b] 
-					JOIN [FinishedTransaction] [a] ON 
-					[a].[TransactionNo] = [b].[TransactionNo] AND 
-					[a].[TerminalNo] = [b].[TerminalNo]
-					WHERE 
-						CAST(a.LogDate as DATE) >= '".$from."' AND 
-						CAST(a.LogDate as DATE) <= '".$to."' AND 
-						[b].[ProductID]  IN (".implode(",",$items).")
-						AND [a].[CustomerCode] in ('".implode("','",$this->customer_code)."')
-						AND a.Voided =0 AND b.Voided =0 AND b.[Return] = 0
-						Group By ProductID
-			) w  ON wo.ProductID = w.ProductID
 
-		";*/
-		/*$query = "SELECT 
-						[b].[ProductID] as product_id, 
-						sum(b.TotalQty) as total_sales,
-						'30' as divisor 
-					FROM [FinishedSales] [b] 
-					JOIN [FinishedTransaction] [a] ON 
-					[a].[TransactionNo] = [b].[TransactionNo] AND 
-					[a].[TerminalNo] = [b].[TerminalNo] AND
-					[a].[LogDate] =[b].[LogDate]
-					WHERE 
-						b.LogDate  >= '".$from."' AND 
-						b.LogDate <= '".$to."' AND 
-						[b].[ProductID]  IN (".implode(",",$items).") AND 
-						[a].[CustomerCode] not in ('".implode("','",$this->customer_code)."')
-						AND a.Voided =0 AND b.Voided =0 AND b.[Return] = 0
-					Group By ProductID";
-		$result = $this->db->query($query);
-		$result = $result->result();
-		return $result;*/
-
-		/*$month = date("m",strtotime($to));
-		
-		if($month == '1'){
-			$from = '2018-11-01';
-			$to = '2018-11-31';
-		}
-*/
 
 		$this->db = $this->load->database("default", true);
 		$this->db->select("product_history.product_id,'30' as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);

@@ -45,6 +45,63 @@ define("TO", $to);
 
   }
 
+   public function create_transfer_franchise(){
+    $transfer_fr_res = $this->auto->get_unprocessed_transfer_fr();
+
+        foreach ($transfer_fr_res as $res) {
+            
+            echo  $res['TransactionNo'].PHP_EOL;
+
+            $TransactionNo =  $res['TransactionNo'];
+            $TerminalNo = $res['TerminalNo'];
+            $transfer_fr_id = $res['id'];
+            $date_served = $res['date_served'];
+            
+
+            $header_tr = array (
+                "date_created" => date('Y-m-d'),
+                "delivery_date" => $date_served,
+                "br_code_out" => 'srsn',
+                "aria_type_out" => '70',
+                "aria_trans_no_out" => $transfer_fr_id,
+                "name_out" => 'NOVALICHES',
+                "m_code_out" => 'STO',
+                "m_id_out" => $TerminalNo,
+                "m_no_out" => $TransactionNo,
+                "transfer_out_date" => date('Y-m-d'),
+                "br_code_in" => BRANCH_USE,
+                "memo_" => LOCAL_BRANCH,
+                "aria_type_in" => '0',
+                "m_code_in" =>'STI'
+            );
+
+            $last_inserted_id = $this->auto->insert_header($header_tr);
+            
+            $res_trans = $this->auto->get_res_for_trans($TransactionNo,$TerminalNo);
+            $det_tr = array();
+            foreach ($res_trans as $res_tr) {
+               
+               $det_tr[] = array ( 
+                "transfer_id" => $last_inserted_id,
+                "stock_id " => $res_tr['stock_id'],
+                "stock_id_2" =>  $res_tr['stock_id_2'],
+                "description" =>  $res_tr['description'],
+                "barcode" =>  $res_tr['barcode'],
+                "uom" =>  $res_tr['uom'],
+                "cost" =>  $res_tr['cost'],
+                "net_of_vat" =>  $res_tr['net_of_vat'],
+                "qty_out" =>  $res_tr['qty_out'],
+                "actual_qty_out" =>  $res_tr['actual_qty_out']);
+
+
+            }
+            $this->auto->insert_batch_details($det_tr);
+            $this->auto->update_pos_order_stat($transfer_fr_id);
+            
+        }
+
+   }
+
    public function over_stock_report($products,$from,$to,$name_head,$value_id=null){
         $se_items =array();
         $counts = 0;
@@ -144,10 +201,11 @@ define("TO", $to);
             }
 
       }
-
+      
+      
       public function multiple_create_product_history(){
         $now =   date('Y-m-d');
-        $past_date = date('Y-m-d', strtotime('-20 days'));
+        $past_date = date('Y-m-d', strtotime('-60 days'));
         $dates = $this->getDatesFromRange($past_date, $now);
             foreach ($dates as $date){
                 echo "Create Product History ".$date.PHP_EOL;
@@ -411,7 +469,8 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['total_sales'] = 0;
             $det['avg_off_take'] = 0;
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
-
+            $det['srs_percentage'] = $res->srs_percentage;
+            echo $det['srs_percentage'];
             $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
             $det['sugg_po'] = $sugg_po;
@@ -423,27 +482,31 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $item[$res->ProductID] = $det;
             $se_items[] = $res->ProductID;
         }
-        
+        $fritems = "'".implode("','", $se_items)."'";   
+        $frcost =  $this->auto->get_franchise_cost($fritems);
         $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
         $case_order_piece = 0;
         $truckLoad = array();
 
-             if(!empty($min_purchase_piece)) {
-                $min_purchase_piece = $min_purchase_piece[0];
-                $truckLoadId= $min_purchase_piece["id"];
-                if($min_purchase_piece["status"] == 1) {
-                  $min_purchase_piece = $min_purchase_piece["min_pc"];
-                  $truckLoad = $this->auto->getAllTruckLoad($truckLoadId);
-                } else $min_purchase_piece = 6;
-            } else $min_purchase_piece = 6;
+        //get franchisee cost
+       // echo var_dump($frcost);
+        $FranchiseeDetails= array();
+        foreach ($frcost as $fr) {
+            $detfr['costfr'] = $fr['CostOfSales'];
+            $FranchiseeDetails[$fr['ProductID']] = $detfr;
+        }
+
+     //   echo var_dump($FranchiseeDetails);
+   //  die();
 
             foreach ($divs as $des) {
+                echo 'sss';
                 if(isset($item[$des->product_id])){
 
                     $item[$des->product_id]['divisor'] = $des->divisor;
                   //  echo  $item[$des->product_id]['divisor'].PHP_EOL;
-                    $item[$des->product_id]['total_sales'] = $des->total_sales/$item[$des->product_id]['qty_by'];
+                    $item[$des->product_id]['total_sales'] = $des->total_sales; //  /$item[$des->product_id]['qty_by'] 
                    // echo $des->total_sales.'/'.$item[$des->product_id]['qty_by'].PHP_EOL;
                     $avg_off_take = ($item[$des->product_id]['total_sales'])/$item[$des->product_id]['divisor'];
                    // echo '('.$item[$des->product_id]['total_sales'].')/'.$item[$des->product_id]['divisor'].PHP_EOL;
@@ -465,62 +528,28 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     
                     if ($item[$des->product_id]['total_sales'] < $filter_sales) $sugg_po  = 0;
                     $sugg_po = ceil($sugg_po-$rounding_off);
-                    if($sugg_po < 0) $sugg_po  = 0;
-                    //echo 'sugg:'.$sugg_po;
-
-                    if(in_array(strtolower($item[$des->product_id]['uom']), $uom_piece)){
-                        $qty_times = $min_purchase_piece;
-                        $sugg_po = $sugg_po/$qty_times;
-                        $sugg_po = ceil($sugg_po);
-                        $sugg_po = $sugg_po * $qty_times;
+                    if($sugg_po < 0) {
+                        $sugg_po  = 0;
                     }
-                    else if( isset($truckLoad[$item[$des->product_id]['uom']])  ){
-                        $qty_times = $truckLoad[$item[$des->product_id]['uom']];
-                        $sugg_po = $sugg_po/$qty_times;
-                        $sugg_po = ceil($sugg_po);
-                        $sugg_po = $sugg_po * $qty_times;
-                    }
+                    echo 'sugg:'.$sugg_po;
 
-                    $qty = $sugg_po;
-                    
-                    $item[$des->product_id]['sugg_po'] = $sugg_po;
+
+                    $qty = $sugg_po / $item[$des->product_id]['qty_by'];
+                    $item[$des->product_id]['cost'] = ($FranchiseeDetails[$des->product_id]['costfr'] / $item[$des->product_id]['srs_percentage']) * $item[$des->product_id]['qty_by'];
+                   
+                    $item[$des->product_id]['sugg_po'] = ceil($qty);
                     $item[$des->product_id]['qty'] = ceil($qty);
+                    $item[$des->product_id]['cost_percentage']  = $item[$des->product_id]['srs_percentage'];
 
                     $extended = $item[$des->product_id]['qty'] * $item[$des->product_id]['cost'];
                     $item[$des->product_id]['extended'] = $extended;
 
                 }
             }
-        $discounts = $disc = array();
-        $discs = $this->purify_discs($item);
-        if (count($discs) > 0)
-            $discounts = $this->auto->get_srs_discounts($discs);
-        foreach ($discounts as $dis) {
-            $disc[$dis->DiscountCode] = array(
-                "code" => $dis->DiscountCode,
-                "desc" => $dis->Description,
-                "amount" => $dis->Amount,
-                "percent" => $dis->Percent,
-                "plus" => $dis->Plus
-            );
-        }
-       
-        foreach ($item as $item_id => $det) {
-            $extended = $det['cost'];
-            for ($i=1; $i <= 3; $i++) { 
-                if($det['disc'.$i] != null){
-                    if(isset($disc[$det['disc'.$i]])){
-                        $det['disc'.$i] = $disc[$det['disc'.$i]];
-                        $extended = $this->calculate_discount($det['disc'.$i],$extended);
-                    }
-                }
-            }
-            $extended = $extended * $det['qty'];
-            if($extended < 0) $extended = 0;
-            $det['extended'] = $extended;
-            $item[$item_id] = $det;
-        }
+
+      
         $this->session->set_userdata('po_cart',$item);
+      
     }
 
      public function index(){
@@ -621,7 +650,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                 }
             } 
         }
-        $this->throw_po();
+        //$this->throw_po();
         echo date("Y-m-d h:i:s").PHP_EOL;
        
     }
@@ -657,50 +686,42 @@ provided that both dates are after 1970. Also only works for dates up to the yea
     }
 
     public function save_po($sf , $auto_generate = 1, $draft = 1){
+      
         $settings = $this->session->userdata("po_setup");
         $totals = $this->get_po_cart_total(false);
         $net_total = $totals['amount'];
         $within_period  = 0;
         if(isset($settings["within_period"]))
           if($settings["within_period"] == 1) $within_period = 1; 
-        if($net_total > 0 ){
+        if($totals['qty'] > 0 ){
                     $po_cart = $this->session->userdata("po_cart");
                     $error_msg = null;
                         $sup = $settings['supplier'];
                         $branch = $this->auto->main_get_branch_details(BRANCH_USE);
-                       $po_head = array(
-                            //"order_no"=>$po_id,
-                            "trans_type"=>PR_TRANS,
-                            "supplier_id"=>$sup['code'],
-                            "supplier_name"=>$sup['name'],
-                            "supplier_email"=>$sup['email'],
-                            "br_code"=>$branch->code,
-                            "delivery_address"=>$branch->address,
-                            "delivery_date"=>$this->date2Sql($settings['del_date']),
-                            "net_total"=>$net_total,
-                            "sales_from"=>$this->date2Sql($settings['from']),
-                            "sales_to"=>$this->date2Sql($settings['to']),
-                            "selling_days"=>$settings['selling_days'],
-                            "manual"=> 0,
-                            "valid_date"=> $this->date2Sql($settings['valid_date']),
-                            "auto_generate"=> $auto_generate,
-                            "draft" => $draft,
-                            "within_period" => $within_period
-                       ); 
+                        $fr_id = $this->auto->get_max_fr_id();
+                        echo $fr_id.'********';
+                        echo $branch;
+
+                        $header = array(
+                            "order_id" => $fr_id,
+                            "order_date" => date('Y-m-d'),
+                            "customer_code" =>'',
+                            "customer_name" => BRANCH_NAME,
+                            "total_sales" => $net_total,
+                            "with_shipping_fee" => 0,
+                            "grand_total" => $net_total,
+                            "payment_type" => 'cod',
+                            "order_status" => 0
+                          
+                        );    
+
 
                       $po_details = array();
                         foreach ($po_cart as $item_id => $row) {
                             if($row['qty'] > 0){
+
                                 $dstr = '';
                                 $extended =  $row['cost'];
-                                for ($i=1; $i <= 3 ; $i++) { 
-                                    $disc = $row['disc'.$i];
-                                    if(is_array($disc)){
-                                        $dstr .= $disc['code']."=>".$row['qty'] *($deduction = $this->calculate_discount($disc,$extended,true)).",";
-                                        $extended -= $deduction;
-                                    }
-                                }
-                                
                                 $extended = $row['qty'] * $row['cost'];
 
                                 $discounts_string = (substr($dstr,0,-1));
@@ -710,29 +731,28 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                                 
                                 $descripiton_ =preg_replace('/[^A-Za-z0-9\-]/', '', $row['description']);    
                                 $det = array(
-                                  //  "order_no"=>$po_id,
-                                    "trans_type"=>PR_TRANS,
-                                    "stock_id"=>$item_id,
+                                    "order_id"=>$fr_id,
                                     "barcode"=>$row['barcode'],
                                     "description"=>$descripiton_,
-                                    "unit_id"=>$row['uom'],
-                                    "unit_price"=>$row['cost'],
-                                    "discounts"=>$discounts_string,
-                                    "sgstd_qty"=>$row['sugg_po'],
-                                    "ord_qty"=>$row['qty'],
-                                    "selling_days"=>$row['sell_days'],
+                                    "qty"=>$row['sugg_po'],
+                                    "srp"=>$row['cost'] * $row['cost_percentage'],
+                                    "subtotal"=>$row['sugg_po'] * ($row['cost']*$row['cost_percentage'])
                                 );
 
                                $po_details[] = $det;
                             }
                         }
-                        $po_head = json_encode($po_head);
-                        $po_details = json_encode($po_details);
+                       $this->auto->insert($header);
+                       $this->auto->insert_batch($po_details);
+                        
+
+                        echo 'done!';
+
                         if($settings["auto_po"] == 1){
                            $settings["auto_po"] = 1;
                         }
                         $branch_use = BRANCH_NAME;
-                        $this->auto->auto_save_details($po_head, $po_details, $settings["user_id"], $settings["auto_po"], $branch_use, $sup['code']);
+
                         $this->session->unset_userdata('po_cart');
                         $this->session->unset_userdata('po_manual_cart');
                    
