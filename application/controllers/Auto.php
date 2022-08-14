@@ -452,6 +452,41 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         $branch_code = BRANCH_USE;
         $supp_items = $this->auto->get_srs_suppliers_item_details(null,$supplier_code);
         $se_items = array();
+		$lucky_me = array('4807770270017',
+						'4807770270024',
+						'4807770273698',
+						'4807770274305',
+						'4807770273674',
+						'4807770273704',
+						'4807770273711'
+						);
+		$load = array(
+		'999000729755',
+		'999000729762',
+		'999000729779',
+		'999000729786',
+		'999000729793',
+		'999000729809',
+		'999000729816',
+		'999000740187',
+		'999000788356',
+		'999000788363',
+		'999000788370',
+		'999000788387',
+		'999000788394',
+		'999000788400',
+		'999000788417',
+		'999000788424',
+		'999000788431',
+		'999000788448',
+		'999000788455',
+		'999000788462',
+		'999000788479',
+		'999000788486',
+		'999000788493',
+		'999000788509',
+		'999000788516'
+		);
         echo '>>>>>>>>>'.count($supp_items).'<num';
         foreach ($supp_items as $res) {
             $qty = 0;
@@ -468,8 +503,16 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['divisor'] = 0;
             $det['total_sales'] = 0;
             $det['avg_off_take'] = 0;
+			$ptage =   $res->srs_percentage;
+			if (in_array($res->ProductCode,$lucky_me)){
+				$ptage = 0.99;
+			}
+			
+			if (in_array($res->ProductCode,$load)){
+				$ptage = 0.99;
+			}
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
-            $det['srs_percentage'] = $res->srs_percentage;
+            $det['srs_percentage'] = $ptage;
             echo $det['srs_percentage'];
             $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];

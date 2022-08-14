@@ -225,8 +225,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 
 	public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
 		$this->db = $this->load->database($this->main_db, TRUE);
-		$sql = "
-		select 
+		$sql = "	select 
 		fs.Description as Description, 
 		fs.ProductID as ProductID, 
 		fs.Barcode as ProductCode, 
@@ -247,9 +246,14 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
 			GROUP BY ProductID)
 			GROUP BY ProductID ORDER BY productid) as fs
-		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.995 ELSE 0.98 END as srs_percentage  from  products where LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and inactive = 0) as pp
-		on fs.ProductID = pp.productid
-		ORDER BY Description";
+		LEFT JOIN (select  productid,sellingarea,
+		CASE 
+		WHEN products.LevelField1Code = 9019 THEN 0.9975 
+		WHEN products.LevelField1Code = 9045 THEN 0.995
+		ELSE 0.98 END as srs_percentage  
+		from  products where LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and inactive = 0) as pp
+				on fs.ProductID = pp.productid
+				ORDER BY Description";
 		
 
 		$res = $this->db->query($sql);

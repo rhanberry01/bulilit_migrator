@@ -55,7 +55,7 @@ class Auto_model extends CI_Model {
 		$this->db = $this->load->database("mysql_pos_db", true);
 		$sql = "select id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
 				WHERE transferstatus ='0' and TransactionNo is not null and customer_name like '%$branch_name%' ";
-		echo $sql;
+		//echo $sql;
 		$res = $this->db->query($sql);
 	    $res = $res->result_array();
 	    return $res;
