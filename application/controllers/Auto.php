@@ -503,8 +503,14 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['divisor'] = 0;
             $det['total_sales'] = 0;
             $det['avg_off_take'] = 0;
+            
 			$ptage =   $res->srs_percentage;
-			if (in_array($res->ProductCode,$lucky_me)){
+
+            if($res->ProductCode == '915455'){
+                echo PHP_EOL.$ptage.'---**'. PHP_EOL;
+            }
+			
+            if (in_array($res->ProductCode,$lucky_me)){
 				$ptage = 0.99;
 			}
 			
@@ -513,7 +519,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 			}
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
             $det['srs_percentage'] = $ptage;
-            echo $det['srs_percentage'];
+          
             $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
             $det['sugg_po'] = $sugg_po;
@@ -524,8 +530,9 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['extended'] = $extended;
             $item[$res->ProductID] = $det;
             $se_items[] = $res->ProductID;
+            $se_barcodes[] = $res->ProductCode;
         }
-        $fritems = "'".implode("','", $se_items)."'";   
+        $fritems = "'".implode("','", $se_barcodes)."'";   
         $frcost =  $this->auto->get_franchise_cost($fritems);
         $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
@@ -534,17 +541,21 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
         //get franchisee cost
        // echo var_dump($frcost);
+     
         $FranchiseeDetails= array();
         foreach ($frcost as $fr) {
+            
             $detfr['costfr'] = $fr['CostOfSales'];
-            $FranchiseeDetails[$fr['ProductID']] = $detfr;
+            $detfr['vendorfr'] = $fr['VendorCode'];
+            $detfr['prodid'] = $fr['ProductID'];
+            $FranchiseeDetails[$fr['Barcode']] = $detfr;
         }
-
+       
      //   echo var_dump($FranchiseeDetails);
    //  die();
-
+             $ls_vendor =  array('TASH001','EMDIIN001','MNOI002');
             foreach ($divs as $des) {
-                echo 'sss';
+              //  echo 'sss';
                 if(isset($item[$des->product_id])){
 
                     $item[$des->product_id]['divisor'] = $des->divisor;
@@ -574,22 +585,29 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     if($sugg_po < 0) {
                         $sugg_po  = 0;
                     }
-                    echo 'sugg:'.$sugg_po;
+                    //echo 'sugg:'.$sugg_po;
 
 
                     $qty = $sugg_po / $item[$des->product_id]['qty_by'];
-                    $item[$des->product_id]['cost'] = ($FranchiseeDetails[$des->product_id]['costfr'] / $item[$des->product_id]['srs_percentage']) * $item[$des->product_id]['qty_by'];
+                    
+                    $srs_percentage = $item[$des->product_id]['srs_percentage'];
+                   
+                    if(in_array($FranchiseeDetails[$item[$des->product_id]['barcode']]['vendorfr'],$ls_vendor)){
+                        $srs_percentage = 0.995;
+                    }
+                  
+                   // echo  $srs_percentage;
+                    $item[$des->product_id]['cost'] = ($FranchiseeDetails[$item[$des->product_id]['barcode']]['costfr'] /  $srs_percentage ) * $item[$des->product_id]['qty_by'];
                    
                     $item[$des->product_id]['sugg_po'] = ceil($qty);
                     $item[$des->product_id]['qty'] = ceil($qty);
-                    $item[$des->product_id]['cost_percentage']  = $item[$des->product_id]['srs_percentage'];
+                    $item[$des->product_id]['cost_percentage']  = $srs_percentage;
 
                     $extended = $item[$des->product_id]['qty'] * $item[$des->product_id]['cost'];
                     $item[$des->product_id]['extended'] = $extended;
 
                 }
             }
-
       
         $this->session->set_userdata('po_cart',$item);
       
@@ -772,14 +790,15 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                                 if ($discounts_string == '0')
                                     $discounts_string = '';
                                 
-                                $descripiton_ =preg_replace('/[^A-Za-z0-9\-]/', '', $row['description']);    
+                                $descripiton_ =preg_replace('/[^A-Za-z0-9\-]/', '', $row['description']);  
+                                
                                 $det = array(
                                     "order_id"=>$fr_id,
                                     "barcode"=>$row['barcode'],
                                     "description"=>$descripiton_,
                                     "qty"=>$row['sugg_po'],
-                                    "srp"=>$row['cost'] * $row['cost_percentage'],
-                                    "subtotal"=>$row['sugg_po'] * ($row['cost']*$row['cost_percentage'])
+                                    "srp"=> $row['cost'] , //* $row['cost_percentage']
+                                    "subtotal"=>$row['sugg_po'] * $row['cost'] //  ($row['cost']*$row['cost_percentage'])
                                 );
 
                                $po_details[] = $det;

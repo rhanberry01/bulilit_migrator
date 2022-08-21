@@ -225,7 +225,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 
 	public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
 		$this->db = $this->load->database($this->main_db, TRUE);
-		$sql = "	select 
+		$sql = "select 
 		fs.Description as Description, 
 		fs.ProductID as ProductID, 
 		fs.Barcode as ProductCode, 
@@ -240,20 +240,16 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		pp.srs_percentage
 		from 
 		(select  ProductID,Barcode,Description,uom,Packing,AverageUnitCost,Price From tfinishedsales
-			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
-			AND (ProductID, Packing) IN(
-			select  ProductID,MIN(Packing)From tfinishedsales
-			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
-			GROUP BY ProductID)
-			GROUP BY ProductID ORDER BY productid) as fs
-		LEFT JOIN (select  productid,sellingarea,
-		CASE 
-		WHEN products.LevelField1Code = 9019 THEN 0.9975 
-		WHEN products.LevelField1Code = 9045 THEN 0.995
-		ELSE 0.98 END as srs_percentage  
-		from  products where LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and inactive = 0) as pp
-				on fs.ProductID = pp.productid
-				ORDER BY Description";
+		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+		AND (ProductID, Packing) IN(
+		select  ProductID,MIN(Packing)From tfinishedsales
+		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+		GROUP BY ProductID)
+		GROUP BY ProductID ORDER BY productid) as fs
+		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.98 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
+		on fs.ProductID = pp.productid
+		where pp.LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and pp.inactive = 0
+		ORDER BY Description";
 		
 
 		$res = $this->db->query($sql);
@@ -493,12 +489,15 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 	public function get_franchise_cost($items=array()){
 		
         $this->db = $this->load->database($this->pricing_db, TRUE);
-		$sql ="SELECT p.ProductID,
+		$sql ="select pp.Barcode as Barcode,vp.ProductID as ProductID,vp.averagenetcost as CostOfSales,vp.VendorCode as VendorCode From POS_Products as pp
+		LEFT JOIN VENDOR_Products as vp on pp.ProductID = vp.ProductID and defa = 1
+		where pp.barcode in(".$items.")";
+		/* $sql ="SELECT p.ProductID,
 		CASE WHEN p.CostOfSales = 0 THEN vp.Averagenetcost ELSE p.CostOfSales END as CostOfSales
 		 FROM [dbo].[Products] as p
 		left JOIN VENDOR_Products as vp
 		on p.ProductID = vp.ProductID and defa = 1
-		where p.ProductID in (".$items.") ";
+		where p.ProductID in (".$items.") "; */
 		$res = $this->db->query($sql);
 		$res = $res->result_array();
       return $res;
