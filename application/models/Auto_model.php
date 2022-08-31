@@ -13,6 +13,95 @@ class Auto_model extends CI_Model {
 
 	}
 
+	public function insert_franchisee_header($data = array()){ 
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$this->db->insert('order_header_franchisee', $data);
+		//echo $this->db->last_query();
+  		$insert_id = $this->db->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function update_franchisee_details($old_ord,$order_id){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "UPDATE order_header_franchisee SET re_order_id=".$order_id."  WHERE order_id = ".$old_ord." ";
+	   echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+	 public function insert_franchisee_details($order_id,$old_ord){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "INSERT INTO order_details_franchisee (order_id,barcode,description,qty,srp,subtotal,category)
+		select ".$order_id.",b.barcode,b.description,(b.qty - served_qty) as qty,b.srp,((b.qty - served_qty)*b.srp) as subtotal,b.category from order_header_franchisee as a LEFT JOIN 
+		order_details_franchisee as b
+		on a.order_id = b.order_id
+		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10061','10059')
+		and re_order_id is null and a.order_id ='".$old_ord."'
+		HAVING qty >= 1
+		ORDER BY a.order_id
+	   ";
+	//   echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+
+	public function update_served_qty(){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "UPDATE 
+	   order_details_franchisee  b RIGHT JOIN
+	   `order_header_franchisee`   a  on a.order_id = b.order_id
+	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2022-08-23' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
+	   ON a.TerminalNo = tf.TerminalNo and a.TransactionNo = tf.TransactionNo and b.barcode = tf.Barcode 
+	   SET b.served_qty = CASE WHEN tf.Barcode is null THEN 0 ELSE tf.served  END
+	   where a.TerminalNo is not null AND a.date_served >='2022-08-24' and b.served_qty is  null 
+	   ";
+	   //echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	  
+	}	
+
+	public function get_re_order(){
+	 $branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "select  a.order_id as old_ord ,customer_name,
+				sum(b.qty - b.served_qty) as unserved , 
+				SUM(((b.qty - b.served_qty)*b.srp)) as total from order_header_franchisee as a LEFT JOIN 
+				order_details_franchisee as b
+				on a.order_id = b.order_id
+				where a.TerminalNo is not null AND a.date_served >='2022-08-29'
+				and category NOT IN('10061','10059')
+				and re_order_id is null 
+				GROUP BY a.order_id,customer_name
+				HAVING unserved >= 1
+				ORDER BY a.order_id";
+	   //echo $sql;
+	   $res = $this->db->query($sql);
+	   $res = $res->result_array();
+	   return $res;
+	   
+	}
+
+	public function get_re_order_id(){
+		$branch_name = BRANCH_NAME;
+		  $this->db = $this->load->database("mysql_pos_db", true);
+		  $sql = "select max(id)+1 as id from order_header_franchisee ";
+		  $res = $this->db->query($sql);
+		  $res = $res->row();
+		  return $res->id;
+		  
+	   }
+
 	 public function get_new_gulay_price(){
 	   $this->db = $this->load->database("main_nova", true);
 		$sql = "select ProductID,barcode,markup,srp,LastDateModified from POS_Products where ProductID

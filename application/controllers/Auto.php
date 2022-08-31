@@ -45,6 +45,42 @@ define("TO", $to);
 
   }
 
+  public function create_re_order(){
+    $res = $this->auto->update_served_qty();
+ 
+  if($res){
+        $for_re_order = $this->auto->get_re_order();
+      
+
+       foreach ($for_re_order as $res) {        
+            $order_id =  $this->auto->get_re_order_id();
+           
+            $old_ord = $res['old_ord'];
+
+            echo  $order_id.'-'. $old_ord;
+            echo $res['customer_name'];
+            $header = array(
+                "order_id" =>  $order_id,
+                "order_date" => date('Y-m-d'),
+                "customer_code" => 'RE-ORDER FROM'.$old_ord,
+                "customer_name" => $res['customer_name'],
+                "total_sales" => $res['total'],
+                "with_shipping_fee" => 0,
+                "grand_total" => $res['total'],
+                "payment_type" => 'COD',
+                "order_status" => 0,
+                "approved" => 1
+            ); 
+              $last_inserted_id = $this->auto->insert_franchisee_header($header);
+              $res_details = $this->auto->insert_franchisee_details($order_id);
+              $upd_details  = $this->auto->update_franchisee_details($old_ord,$order_id);  
+
+           //die(); 
+        }  
+    } 
+    
+  }
+
    public function create_transfer_franchise(){
     $transfer_fr_res = $this->auto->get_unprocessed_transfer_fr();
 
