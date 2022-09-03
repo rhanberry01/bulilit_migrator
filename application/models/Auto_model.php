@@ -25,7 +25,7 @@ class Auto_model extends CI_Model {
 		$branch_name = BRANCH_NAME;
 	   $this->db = $this->load->database("mysql_pos_db", true);
 	   $sql = "UPDATE order_header_franchisee SET re_order_id=".$order_id."  WHERE order_id = ".$old_ord." ";
-	   echo $sql;
+	  // echo $sql;
 	   $res = $this->db->query($sql);
 	   if($res){
 		return $res;
@@ -39,7 +39,7 @@ class Auto_model extends CI_Model {
 		select ".$order_id.",b.barcode,b.description,(b.qty - served_qty) as qty,b.srp,((b.qty - served_qty)*b.srp) as subtotal,b.category from order_header_franchisee as a LEFT JOIN 
 		order_details_franchisee as b
 		on a.order_id = b.order_id
-		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10061','10059')
+		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
 		and re_order_id is null and a.order_id ='".$old_ord."'
 		HAVING qty >= 1
 		ORDER BY a.order_id
@@ -61,7 +61,7 @@ class Auto_model extends CI_Model {
 	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2022-08-23' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
 	   ON a.TerminalNo = tf.TerminalNo and a.TransactionNo = tf.TransactionNo and b.barcode = tf.Barcode 
 	   SET b.served_qty = CASE WHEN tf.Barcode is null THEN 0 ELSE tf.served  END
-	   where a.TerminalNo is not null AND a.date_served >='2022-08-24' and b.served_qty is  null 
+	   where a.TerminalNo is not null AND a.date_served >='2022-08-29' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
 	   ";
 	   //echo $sql;
 	   $res = $this->db->query($sql);
@@ -80,8 +80,8 @@ class Auto_model extends CI_Model {
 				order_details_franchisee as b
 				on a.order_id = b.order_id
 				where a.TerminalNo is not null AND a.date_served >='2022-08-29'
-				and category NOT IN('10061','10059')
-				and re_order_id is null 
+				and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
+				and re_order_id is null  
 				GROUP BY a.order_id,customer_name
 				HAVING unserved >= 1
 				ORDER BY a.order_id";
@@ -259,7 +259,7 @@ class Auto_model extends CI_Model {
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
 		$items = array();
-		$excludes_category = array('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
+		$excludes_category = array('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041');
 		foreach($exclude_items as $index => $it) array_push($items, $it["ProductID"]);
 		
 		$this->db->select('vendor_products.VendorProductCode,
@@ -326,7 +326,8 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		'' as discountcode3,
 		pp.sellingarea as StockRoom,
 		fs.Packing as reportqty,
-		pp.srs_percentage
+		pp.srs_percentage,
+		pp.LevelField1Code
 		from 
 		(select  ProductID,Barcode,Description,uom,Packing,AverageUnitCost,Price From tfinishedsales
 		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
@@ -337,7 +338,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		GROUP BY ProductID ORDER BY productid) as fs
 		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.98 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
 		on fs.ProductID = pp.productid
-		where pp.LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and pp.inactive = 0
+		where pp.LevelField1Code  not in ('10055','10050','10053','10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041') and pp.inactive = 0
 		ORDER BY Description";
 		
 
@@ -612,13 +613,29 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$this->db->insert("order_header_franchisee", $data);
 	}
 
+	function must_have_seven_days_sale($date = null){
+		$this->db = $this->load->database("default", true);
+		$dates = date('Y-m-d');
+		if($date){
+			$dates = $date;
+		}
+		$past_seven_days =  date('Y-m-d', strtotime('-30 days',strtotime($dates)));
+		 $sql = "select count(a.date_posted) as number_of_sales from(
+					SELECT date_posted FROM `product_history` where date_posted >='".$past_seven_days."'
+					 GROUP BY date_posted) as a";
+		
+		$res = $this->db->query($sql);
+	    $res = $res->row();
+	    return $res->number_of_sales;
 
 
-	function get_srs_items_po_divisor($from,$to,$items=array()){
+	}
+
+	function get_srs_items_po_divisor($from,$to,$items=array(), $divisor_ ){
 
 
 		$this->db = $this->load->database("default", true);
-		$this->db->select("product_history.product_id,'30' as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
+		$this->db->select("product_history.product_id,".$divisor_." as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
 		$this->db->from('product_history');
 			
 		$this->db->where('product_history.date_posted >=',$from);	

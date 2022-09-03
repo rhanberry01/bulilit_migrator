@@ -72,8 +72,11 @@ define("TO", $to);
                 "approved" => 1
             ); 
               $last_inserted_id = $this->auto->insert_franchisee_header($header);
-              $res_details = $this->auto->insert_franchisee_details($order_id);
-              $upd_details  = $this->auto->update_franchisee_details($old_ord,$order_id);  
+              $res_details = $this->auto->insert_franchisee_details($order_id,$old_ord);
+              if($res_details){
+                $upd_details  = $this->auto->update_franchisee_details($old_ord,$order_id);  
+              }
+              
 
            //die(); 
         }  
@@ -486,6 +489,14 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         $supplier_code = $settings["supplier"]["code"];
         echo  $supplier_code.'<_'.PHP_EOL;
         $branch_code = BRANCH_USE;
+        $divisor_  = '30';
+        $new_branch_checker  = $this->auto->must_have_seven_days_sale();
+        if($new_branch_checker <=14){
+            $days_ = $to .' -'.$new_branch_checker.' days';
+            $from = date("Y-m-d",strtotime($to .$days_));
+            $divisor_  = $new_branch_checker;
+        }
+
         $supp_items = $this->auto->get_srs_suppliers_item_details(null,$supplier_code);
         $se_items = array();
 		$lucky_me = array('4807770270017',
@@ -554,7 +565,9 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 				$ptage = 0.99;
 			}
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
-            $det['srs_percentage'] = $ptage;
+           
+           $det['LevelField1Code'] = $res->LevelField1Code;
+           $det['srs_percentage'] = $ptage;
           
             $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
@@ -570,7 +583,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         }
         $fritems = "'".implode("','", $se_barcodes)."'";   
         $frcost =  $this->auto->get_franchise_cost($fritems);
-        $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
+        $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items,$divisor_ );
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
         $case_order_piece = 0;
         $truckLoad = array();
@@ -633,6 +646,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     }
                   
                    // echo  $srs_percentage;
+                   $item[$des->product_id]['comp_history'] ='Total Sales: '.$item[$des->product_id]['total_sales'].' Ave Offtake: '.$avg_off_take.' QOH: '.$qoh_;
                     $item[$des->product_id]['cost'] = ($FranchiseeDetails[$item[$des->product_id]['barcode']]['costfr'] /  $srs_percentage ) * $item[$des->product_id]['qty_by'];
                    
                     $item[$des->product_id]['sugg_po'] = ceil($qty);
@@ -834,12 +848,15 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                                     "description"=>$descripiton_,
                                     "qty"=>$row['sugg_po'],
                                     "srp"=> $row['cost'] , //* $row['cost_percentage']
-                                    "subtotal"=>$row['sugg_po'] * $row['cost'] //  ($row['cost']*$row['cost_percentage'])
+                                    "category"=>$row['LevelField1Code'],
+                                    "subtotal"=>$row['sugg_po'] * $row['cost'], //  ($row['cost']*$row['cost_percentage'])
+                                    "comp_history"=>$row['comp_history']
                                 );
 
                                $po_details[] = $det;
                             }
                         }
+                        
                        $this->auto->insert($header);
                        $this->auto->insert_batch($po_details);
                         
