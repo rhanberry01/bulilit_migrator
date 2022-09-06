@@ -493,10 +493,11 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         $new_branch_checker  = $this->auto->must_have_seven_days_sale();
         if($new_branch_checker <=14){
             $days_ = $to .' -'.$new_branch_checker.' days';
-            $from = date("Y-m-d",strtotime($to .$days_));
+            $from = date("Y-m-d",strtotime($days_));
             $divisor_  = $new_branch_checker;
+          
         }
-
+      
         $supp_items = $this->auto->get_srs_suppliers_item_details(null,$supplier_code);
         $se_items = array();
 		$lucky_me = array('4807770270017',
@@ -569,7 +570,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
            $det['LevelField1Code'] = $res->LevelField1Code;
            $det['srs_percentage'] = $ptage;
           
-            $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
+            $det['avg_off_take_x'] = ($divisor_ < 30 ? 4 : 7); // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
             $det['sugg_po'] = $sugg_po;
             $det['qty'] = $qty;
