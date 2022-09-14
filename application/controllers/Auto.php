@@ -491,7 +491,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         $branch_code = BRANCH_USE;
         $divisor_  = '30';
         $new_branch_checker  = $this->auto->must_have_seven_days_sale();
-        if($new_branch_checker <=14){
+        if($new_branch_checker < 30){
             $days_ = $to .' -'.$new_branch_checker.' days';
             $from = date("Y-m-d",strtotime($days_));
             $divisor_  = $new_branch_checker;
@@ -647,9 +647,12 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     }
                   
                    // echo  $srs_percentage;
-                   $item[$des->product_id]['comp_history'] ='Total Sales: '.$item[$des->product_id]['total_sales'].' Ave Offtake: '.$avg_off_take.' QOH: '.$qoh_;
+                   $item[$des->product_id]['comp_history'] ='Total Sales: '.$item[$des->product_id]['total_sales'].' Ave Offtake: '.$avg_off_take.' QOH: '.$qoh_.' *Suggested Qty is based from '.$from.' to '.$to.'and '.$item[$des->product_id]['avg_off_take_x'].' selling days.' ;
                     $item[$des->product_id]['cost'] = ($FranchiseeDetails[$item[$des->product_id]['barcode']]['costfr'] /  $srs_percentage ) * $item[$des->product_id]['qty_by'];
                    
+                    $item[$des->product_id]['from'] = $from;
+                    $item[$des->product_id]['to'] = $to;
+
                     $item[$des->product_id]['sugg_po'] = ceil($qty);
                     $item[$des->product_id]['qty'] = ceil($qty);
                     $item[$des->product_id]['cost_percentage']  = $srs_percentage;
