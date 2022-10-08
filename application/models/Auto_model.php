@@ -149,7 +149,7 @@ class Auto_model extends CI_Model {
 				
 		if($branch_name == 'BATASAN'){
 			$sql = "select customer_name,id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
-			WHERE transferstatus ='1' and TransactionNo is not null and 
+			WHERE transferstatus ='0' and TransactionNo is not null and 
 			(customer_name = 'BATASAN' or  customer_name = 'BATASAN_MANUAL')";
 		}
 		
