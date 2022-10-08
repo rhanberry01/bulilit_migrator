@@ -140,10 +140,19 @@ class Auto_model extends CI_Model {
 	    return $res;
 	 }
 	 public function get_unprocessed_transfer_fr(){
+		 
 		 $branch_name = BRANCH_NAME;
-		$this->db = $this->load->database("mysql_pos_db", true);
+		 $this->db = $this->load->database("mysql_pos_db", true);
+		
 		$sql = "select id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
 				WHERE transferstatus ='0' and TransactionNo is not null and customer_name like '%$branch_name%' ";
+				
+		if($branch_name == 'BATASAN'){
+			$sql = "select customer_name,id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
+			WHERE transferstatus ='1' and TransactionNo is not null and 
+			(customer_name = 'BATASAN' or  customer_name = 'BATASAN_MANUAL')";
+		}
+		
 		//echo $sql;
 		$res = $this->db->query($sql);
 	    $res = $res->result_array();
