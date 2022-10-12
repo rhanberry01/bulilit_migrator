@@ -13,6 +13,188 @@ class Auto_model extends CI_Model {
 
 	}
 
+	public function get_purchases_res($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT SUM(ABS(amount))+0 as gl_amount FROM  0_gl_trans 
+        where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.") and type_no ='".$type_no."' ";
+       $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->gl_amount;
+        }else{
+            return  0;
+        }
+
+    }
+
+    public function get_ms_purchases_franchisee($ms_db){
+        $end_date = date('Y-m-d');
+        $past_30days = date('Y-m-d', strtotime('-11 days'));
+      
+
+       $this->ddb = $this->load->database($ms_db, true);
+       $sql = "select 
+       (MovementNo*1) as type_no,cast(m.posteddate as date) as date_,SUM(ROUND((ml.qty*unitcost),4)) as tot_amt, SourceInvoiceNo as OrNum
+       from Movements as m
+      LEFT JOIN MovementLine as ml
+      on m.MovementID = ml.MovementID 
+      where MovementCode = 'STI'
+      and cast(m.posteddate as date) >='".$past_30days."' and cast(m.posteddate as date) <='". $end_date."'
+      GROUP BY cast(m.posteddate as date),MovementNo,SourceInvoiceNo ORDER BY MovementNo";
+
+       echo  $sql;
+       $result = $this->ddb->query($sql);
+       $result = $result->result();
+       return  $result;
+
+    }
+
+    public function get_ms_sales_franchisee($ms_db){
+        $end_date = date('Y-m-d', strtotime('-1 days'));
+        $past_30days = date('Y-m-d', strtotime('-2 days'));
+      
+
+       $this->ddb = $this->load->database($ms_db, true);
+       $sql = "SELECT cast (LogDate as Date) as LogDate ,(SUM(ft.GrandTotal)-SUM(ft.ReturnSubtotal)) as total
+               FROM FinishedTransaction as ft
+               WHERE LogDate >= '".$past_30days."' and LogDate<= '".$end_date."'
+               AND Voided='0'
+               group by LogDate
+               order by LogDate";
+
+       $result = $this->ddb->query($sql);
+       $result = $result->result();
+       return  $result;
+    }
+
+	public function insert_gl($aria_db = null,$type = null, $type_no = null, $sales_date = null,$memo =null, $amount = null,$account = null,$person_type_id=3,$person_id=0){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_gl_trans (type, type_no, tran_date,account,amount,memo_,person_type_id,person_id) VALUES ('".$type."', ".$type_no.", '".$sales_date."','".$account."',".-$amount.",'".$memo."','".$person_type_id."','".$person_id."')";
+        //return $sql;
+		$result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+    }
+
+	public function add_refs($aria_db = null,$type = null, $max_type_no = null, $refs = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_comments (id,type,reference) VALUES (".$max_type_no.",".$type.",'".$refs."')";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+
+
+     }
+
+
+	 public function add_audit_trail($aria_db,$trans_type, $trans_no, $trans_date, $descr='')
+	 {
+		 
+		 $ip = $this->input->ip_address();
+ 
+		 $this->ddb = $this->load->database($aria_db, true);
+		 $sql = "INSERT INTO 0_audit_trail"
+				 . " (type, trans_no, user, fiscal_year, gl_date, description, gl_seq, remote_address)
+				 VALUES(".$trans_type.", ".$trans_no.","
+				 .'1'. ","
+				 .'1'.","
+				 . "'".date("Y-m-d h:i:sa")."',"
+				 . $descr. ", NULL,"
+				 . $ip. ")";
+		 $result = $this->ddb->query($sql);
+		 if($result){
+			 return  true;
+		 }else{
+			 return false;
+		 }
+ 
+	 }
+
+	public function add_comments($aria_db = null,$type = null, $max_type_no = null, $sales_date = null, $memo = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_comments (type, id, date_, memo_) VALUES (".$type.",".$max_type_no.",'".$sales_date."','".$memo."')";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+
+     }
+
+	public function get_next_trans_no_franchisee($aria_db = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT max(type_no) as max_type_no from 0_gl_trans WHERE type ='60'";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->max_type_no + 1;
+        }else{
+            return false;
+        }
+
+    }
+	    public function get_ref_franchisee($aria_db = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "select  max(CAST(reference AS UNSIGNED)) as max_ref from 0_refs  where type ='60'";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->max_ref + 1;
+        }else{
+            return false;
+        }
+
+    }
+
+	public function get_existed_sales_franchisee($sales_date = null,$aria_db = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT type_no FROM  0_gl_trans where tran_date = '".$sales_date."' and type ='60'";
+		echo $sql;
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->type_no;
+        }else{
+            return  false;
+        }
+    }
+
+	public function delete_gl_franchisee($sales_date = null,$aria_db = null,$get_existed_sales = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "DELETE FROM 0_gl_trans where tran_date = '".$sales_date."' and type ='60' and type_no ='".$get_existed_sales."'";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+    }
+
+
+	public function get_sales_collection($sales_date = null,$aria_db = null,$type = null, $account = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT SUM(ABS(amount))+0 as gl_amount FROM  0_gl_trans where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.")";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->gl_amount;
+        }else{
+            return  0;
+        }
+
+    }
+
+
 	public function insert_franchisee_header($data = array()){ 
 		$this->db = $this->load->database("mysql_pos_db", true);
 		$this->db->insert('order_header_franchisee', $data);
