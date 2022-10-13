@@ -52,7 +52,7 @@ class Auto_model extends CI_Model {
 
     public function get_ms_sales_franchisee($ms_db){
         $end_date = date('Y-m-d', strtotime('-1 days'));
-        $past_30days = date('Y-m-d', strtotime('-2 days'));
+        $past_30days = date('Y-m-d', strtotime('-11 days'));
       
 
        $this->ddb = $this->load->database($ms_db, true);
