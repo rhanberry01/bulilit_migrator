@@ -258,7 +258,7 @@ class Auto_model extends CI_Model {
 		$sql = "INSERT into comstore_srp_update (barcode,pricemodecode,uom,srp,throw,br_code)
 		select Barcode,PriceModeCode,uom,srp,0,'".$branch_name."' from POS_Products where LastDateModified >='".$past_3days."' 
 		and ProductID not in(select ProductID from products where LevelField1Code ='10061')
-		and Barcode not in(select Barcode from comstore_srp_update)";
+		and Barcode not in(select Barcode from comstore_srp_update where br_code = '".$branch_name ."')";
 
 	   $res = $this->db->query($sql);
 	   if($res){
