@@ -214,6 +214,76 @@ class Auto_model extends CI_Model {
 	   }
 	}
 
+	public function update_comstore_srp($barcode,$srp){
+	   $this->db = $this->load->database("mysql_pos_db_temp", true);
+	   $sql = "UPDATE pos_products SET srp = ".$srp.", LastDateModified = '".date('Y-m-d H:i:s')."' WHERE Barcode = '".$barcode."' ";
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+	public function update_srspos_comstore_srp($barcode,$srp){
+		$this->db = $this->load->database("mysql_pos_db_temp", true);
+		$sql = "UPDATE srspos.pos_products SET srp = ".$srp.", LastDateModified = '".date('Y-m-d H:i:s')."' WHERE Barcode = '".$barcode."' ";
+		$res = $this->db->query($sql);
+		if($res){
+		 return $res;
+		}
+	 }
+
+	 public function update_comstore_srp_stat($barcodes){
+		$branch_name = BRANCH_NAME;
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$sql = "UPDATE comstore_srp_update SET throw = 1  where barcode in('".$barcodes."') and  br_code = '".$branch_name ."'";
+		echo $sql;
+	   $res = $this->db->query($sql);
+	 }
+
+	public function get_modified_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$sql = "select  TOP 50 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
+	   $res = $this->db->query($sql);
+	   $res = $res->result_array();
+	   return $res;
+	}
+
+	public function insert_new_modifed_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$past_3days = date("Y-m-d", strtotime("-3 days"));
+		$sql = "INSERT into comstore_srp_update (barcode,pricemodecode,uom,srp,throw,br_code)
+		select Barcode,PriceModeCode,uom,srp,0,'".$branch_name."' from POS_Products where LastDateModified >='".$past_3days."' 
+		and ProductID not in(select ProductID from products where LevelField1Code ='10061')
+		and Barcode not in(select Barcode from comstore_srp_update)";
+
+	   $res = $this->db->query($sql);
+	   if($res){
+		 return 'modified price has been inserted!';
+	   }
+	}
+
+
+	public function update_modified_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$sql = "UPDATE a
+		SET a.srp = b.srp,throw = 0
+		from comstore_srp_update as a
+		LEFT JOIN POS_Products as b
+		on a.barcode = b.Barcode
+		where a.srp != b.srp and a.br_code = '".$branch_name."' ";
+
+	   $res = $this->db->query($sql);
+	   if($res){
+		 return 'modified price has been updated!';
+	   }
+	}
+
 	 public function insert_franchisee_details($order_id,$old_ord){
 		$branch_name = BRANCH_NAME;
 	   $this->db = $this->load->database("mysql_pos_db", true);

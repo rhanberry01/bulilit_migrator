@@ -44,6 +44,30 @@ define("TO", $to);
             
 
   }
+  public function throw_modified_srp(){
+    $res = $this->auto->get_modified_srp();
+    $barcodes = array(); 
+    foreach ($res as $comstore_det) {
+        $barcode =  $comstore_det['barcode'];
+        $srp =  $comstore_det['srp'];
+       
+       $this->auto->update_comstore_srp($barcode,$srp);
+       $this->auto->update_srspos_comstore_srp($barcode,$srp);
+        
+        $barcodes[] =  $barcode;
+    }
+    $barcodes = implode("','",$barcodes);
+    $this->auto->update_comstore_srp_stat($barcodes);
+    echo 'comstore srp updated';
+  }
+
+  public function update_modified_srp(){
+    $ins = $this->auto->insert_new_modifed_srp();
+    echo  $ins.PHP_EOL;
+    $upd = $this->auto->update_modified_srp();
+    echo $upd.PHP_EOL;
+    
+  }
 
   public function create_re_order(){
     $res = $this->auto->update_served_qty();
