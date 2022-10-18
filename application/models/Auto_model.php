@@ -215,7 +215,7 @@ class Auto_model extends CI_Model {
 	}
 
 	public function update_comstore_srp($barcode,$srp){
-	   $this->db = $this->load->database("mysql_pos_db_temp", true);
+	   $this->db = $this->load->database("main_branch_mysql", true);
 	   $sql = "UPDATE pos_products SET srp = ".$srp.", LastDateModified = '".date('Y-m-d H:i:s')."' WHERE Barcode = '".$barcode."' ";
 	   $res = $this->db->query($sql);
 	   if($res){
@@ -224,7 +224,7 @@ class Auto_model extends CI_Model {
 	}
 
 	public function update_srspos_comstore_srp($barcode,$srp){
-		$this->db = $this->load->database("mysql_pos_db_temp", true);
+		$this->db = $this->load->database("main_branch_mysql", true);
 		$sql = "UPDATE srspos.pos_products SET srp = ".$srp.", LastDateModified = '".date('Y-m-d H:i:s')."' WHERE Barcode = '".$barcode."' ";
 		$res = $this->db->query($sql);
 		if($res){
