@@ -13,6 +13,362 @@ class Auto_model extends CI_Model {
 
 	}
 
+	public function get_purchases_res($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT SUM(ABS(amount))+0 as gl_amount FROM  0_gl_trans 
+        where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.") and type_no ='".$type_no."' ";
+       $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->gl_amount;
+        }else{
+            return  0;
+        }
+
+    }
+
+    public function get_ms_purchases_franchisee($ms_db){
+        $end_date = date('Y-m-d');
+        $past_30days = date('Y-m-d', strtotime('-11 days'));
+      
+
+       $this->ddb = $this->load->database($ms_db, true);
+       $sql = "select 
+       (MovementNo*1) as type_no,cast(m.posteddate as date) as date_,SUM(ROUND((ml.qty*unitcost),4)) as tot_amt, SourceInvoiceNo as OrNum
+       from Movements as m
+      LEFT JOIN MovementLine as ml
+      on m.MovementID = ml.MovementID 
+      where MovementCode = 'STI'
+      and cast(m.posteddate as date) >='".$past_30days."' and cast(m.posteddate as date) <='". $end_date."'
+      GROUP BY cast(m.posteddate as date),MovementNo,SourceInvoiceNo ORDER BY MovementNo";
+
+       echo  $sql;
+       $result = $this->ddb->query($sql);
+       $result = $result->result();
+       return  $result;
+
+    }
+
+    public function get_ms_sales_franchisee($ms_db){
+        $end_date = date('Y-m-d', strtotime('-1 days'));
+        $past_30days = date('Y-m-d', strtotime('-11 days'));
+      
+
+       $this->ddb = $this->load->database($ms_db, true);
+       $sql = "SELECT cast (LogDate as Date) as LogDate ,(SUM(ft.GrandTotal)-SUM(ft.ReturnSubtotal)) as total
+               FROM FinishedTransaction as ft
+               WHERE LogDate >= '".$past_30days."' and LogDate<= '".$end_date."'
+               AND Voided='0'
+               group by LogDate
+               order by LogDate";
+
+       $result = $this->ddb->query($sql);
+       $result = $result->result();
+       return  $result;
+    }
+
+	public function insert_gl($aria_db = null,$type = null, $type_no = null, $sales_date = null,$memo =null, $amount = null,$account = null,$person_type_id=3,$person_id=0){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_gl_trans (type, type_no, tran_date,account,amount,memo_,person_type_id,person_id) VALUES ('".$type."', ".$type_no.", '".$sales_date."','".$account."',".-$amount.",'".$memo."','".$person_type_id."','".$person_id."')";
+        //return $sql;
+		$result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+    }
+
+	public function add_refs($aria_db = null,$type = null, $max_type_no = null, $refs = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_comments (id,type,reference) VALUES (".$max_type_no.",".$type.",'".$refs."')";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+
+
+     }
+
+
+	 public function add_audit_trail($aria_db,$trans_type, $trans_no, $trans_date, $descr='')
+	 {
+		 
+		 $ip = $this->input->ip_address();
+ 
+		 $this->ddb = $this->load->database($aria_db, true);
+		 $sql = "INSERT INTO 0_audit_trail"
+				 . " (type, trans_no, user, fiscal_year, gl_date, description, gl_seq, remote_address)
+				 VALUES(".$trans_type.", ".$trans_no.","
+				 .'1'. ","
+				 .'1'.","
+				 . "'".date("Y-m-d h:i:sa")."',"
+				 . $descr. ", NULL,"
+				 . $ip. ")";
+		 $result = $this->ddb->query($sql);
+		 if($result){
+			 return  true;
+		 }else{
+			 return false;
+		 }
+ 
+	 }
+
+	public function add_comments($aria_db = null,$type = null, $max_type_no = null, $sales_date = null, $memo = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "INSERT INTO 0_comments (type, id, date_, memo_) VALUES (".$type.",".$max_type_no.",'".$sales_date."','".$memo."')";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+
+     }
+
+	public function get_next_trans_no_franchisee($aria_db = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT max(type_no) as max_type_no from 0_gl_trans WHERE type ='60'";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->max_type_no + 1;
+        }else{
+            return false;
+        }
+
+    }
+	    public function get_ref_franchisee($aria_db = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "select  max(CAST(reference AS UNSIGNED)) as max_ref from 0_refs  where type ='60'";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->max_ref + 1;
+        }else{
+            return false;
+        }
+
+    }
+
+	public function get_existed_sales_franchisee($sales_date = null,$aria_db = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT type_no FROM  0_gl_trans where tran_date = '".$sales_date."' and type ='60'";
+		echo $sql;
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->type_no;
+        }else{
+            return  false;
+        }
+    }
+
+	public function delete_gl_franchisee($sales_date = null,$aria_db = null,$get_existed_sales = null){
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "DELETE FROM 0_gl_trans where tran_date = '".$sales_date."' and type ='60' and type_no ='".$get_existed_sales."'";
+        $result = $this->ddb->query($sql);
+        if($result){
+            return  true;
+        }else{
+            return false;
+        }
+    }
+
+
+	public function get_sales_collection($sales_date = null,$aria_db = null,$type = null, $account = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "SELECT SUM(ABS(amount))+0 as gl_amount FROM  0_gl_trans where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.")";
+        $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result->gl_amount;
+        }else{
+            return  0;
+        }
+
+    }
+
+
+	public function insert_franchisee_header($data = array()){ 
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$this->db->insert('order_header_franchisee', $data);
+		//echo $this->db->last_query();
+  		$insert_id = $this->db->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function update_franchisee_details($old_ord,$order_id){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "UPDATE order_header_franchisee SET re_order_id=".$order_id."  WHERE order_id = ".$old_ord." ";
+	  // echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+	public function update_comstore_srp($barcode,$srp,$uomqty,$uom){
+	   $this->db = $this->load->database("main_branch_mysql", true);
+	   $sql = "UPDATE pos_products 
+	   SET srp = ".$srp.", 
+	   LastDateModified = '".date('Y-m-d H:i:s')."',
+	   uom = '".$uom."',
+	   qty = ".$uomqty."
+	   WHERE Barcode = '".$barcode."' 
+	   and srp <= ".$srp."
+	   ";
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+	public function update_srspos_comstore_srp($barcode,$srp,$uomqty,$uom){
+		$this->db = $this->load->database("main_branch_mysql", true);
+		$sql = "UPDATE 
+		srspos.pos_products 
+		SET srp = ".$srp.", 
+		LastDateModified = '".date('Y-m-d H:i:s')."',
+		uom = '".$uom."',
+	    qty = ".$uomqty."		
+		WHERE Barcode = '".$barcode."'
+		and srp <= ".$srp."
+		";
+		$res = $this->db->query($sql);
+		if($res){
+		 return $res;
+		}
+	 }
+
+	 public function update_comstore_srp_stat($barcodes){
+		$branch_name = BRANCH_NAME;
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$sql = "UPDATE comstore_srp_update SET throw = 1  where barcode in('".$barcodes."') and  br_code = '".$branch_name ."'";
+		echo $sql;
+	   $res = $this->db->query($sql);
+	 }
+
+	public function get_modified_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$sql = "select  TOP 50 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
+	   $res = $this->db->query($sql);
+	   $res = $res->result_array();
+	   return $res;
+	}
+
+	public function insert_new_modifed_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$past_3days = date("Y-m-d", strtotime("-3 days"));
+		$sql = "INSERT into comstore_srp_update (barcode,pricemodecode,uom,srp,throw,br_code,uomqty)
+		select Barcode,PriceModeCode,uom,srp,0,'".$branch_name."',qty from POS_Products where LastDateModified >='".$past_3days."' 
+		and ProductID not in(select ProductID from products where LevelField1Code IN('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9092'))
+		and Barcode not in(select Barcode from comstore_srp_update where br_code = '".$branch_name ."')";
+
+	   $res = $this->db->query($sql);
+	   if($res){
+		 return 'modified price has been inserted!';
+	   }
+	}
+
+
+	public function update_modified_srp(){
+		
+		$this->db = $this->load->database("pricing_db_ms", true);
+		$branch_name = BRANCH_NAME;
+		$sql = "UPDATE a
+		SET a.srp = b.srp,throw = 0
+		from comstore_srp_update as a
+		LEFT JOIN POS_Products as b
+		on a.barcode = b.Barcode
+		where a.srp != b.srp and a.br_code = '".$branch_name."' ";
+
+	   $res = $this->db->query($sql);
+	   if($res){
+		 return 'modified price has been updated!';
+	   }
+	}
+
+	 public function insert_franchisee_details($order_id,$old_ord){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "INSERT INTO order_details_franchisee (order_id,barcode,description,qty,srp,subtotal,category)
+		select ".$order_id.",b.barcode,b.description,(b.qty - served_qty) as qty,b.srp,((b.qty - served_qty)*b.srp) as subtotal,b.category from order_header_franchisee as a LEFT JOIN 
+		order_details_franchisee as b
+		on a.order_id = b.order_id
+		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
+		and re_order_id is null and a.order_id ='".$old_ord."'
+		HAVING qty >= 1
+		ORDER BY a.order_id
+	   ";
+	//   echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	}
+
+
+	public function update_served_qty(){
+		$branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "UPDATE 
+	   order_details_franchisee  b RIGHT JOIN
+	   `order_header_franchisee`   a  on a.order_id = b.order_id
+	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2022-08-23' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
+	   ON a.TerminalNo = tf.TerminalNo and a.TransactionNo = tf.TransactionNo and b.barcode = tf.Barcode 
+	   SET b.served_qty = CASE WHEN tf.Barcode is null THEN 0 ELSE tf.served  END
+	   where a.TerminalNo is not null AND a.date_served >='2022-08-29' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
+	   ";
+	   //echo $sql;
+	   $res = $this->db->query($sql);
+	   if($res){
+		return $res;
+	   }
+	  
+	}	
+
+	public function get_re_order(){
+	 $branch_name = BRANCH_NAME;
+	   $this->db = $this->load->database("mysql_pos_db", true);
+	   $sql = "select  a.order_id as old_ord ,customer_name,
+				sum(b.qty - b.served_qty) as unserved , 
+				SUM(((b.qty - b.served_qty)*b.srp)) as total from order_header_franchisee as a LEFT JOIN 
+				order_details_franchisee as b
+				on a.order_id = b.order_id
+				where a.TerminalNo is not null AND a.date_served >='2022-08-29'
+				and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
+				and re_order_id is null  
+				GROUP BY a.order_id,customer_name
+				HAVING unserved >= 1
+				ORDER BY a.order_id";
+	   //echo $sql;
+	   $res = $this->db->query($sql);
+	   $res = $res->result_array();
+	   return $res;
+	   
+	}
+
+	public function get_re_order_id(){
+		$branch_name = BRANCH_NAME;
+		  $this->db = $this->load->database("mysql_pos_db", true);
+		  $sql = "select max(id)+1 as id from order_header_franchisee ";
+		  $res = $this->db->query($sql);
+		  $res = $res->row();
+		  return $res->id;
+		  
+	   }
+
 	 public function get_new_gulay_price(){
 	   $this->db = $this->load->database("main_nova", true);
 		$sql = "select ProductID,barcode,markup,srp,LastDateModified from POS_Products where ProductID
@@ -51,10 +407,19 @@ class Auto_model extends CI_Model {
 	    return $res;
 	 }
 	 public function get_unprocessed_transfer_fr(){
+		 
 		 $branch_name = BRANCH_NAME;
-		$this->db = $this->load->database("mysql_pos_db", true);
+		 $this->db = $this->load->database("mysql_pos_db", true);
+		
 		$sql = "select id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
 				WHERE transferstatus ='0' and TransactionNo is not null and customer_name like '%$branch_name%' ";
+				
+		if($branch_name == 'BATASAN'){
+			$sql = "select customer_name,id,TransactionNo,TerminalNo,date_served from order_header_franchisee 
+			WHERE transferstatus ='0' and TransactionNo is not null and 
+			(customer_name = 'BATASAN' or  customer_name = 'BATASAN_MANUAL')";
+		}
+		
 		//echo $sql;
 		$res = $this->db->query($sql);
 	    $res = $res->result_array();
@@ -170,7 +535,7 @@ class Auto_model extends CI_Model {
 		$exclude_items = $exclude_db->get("exclude_items");
 		$exclude_items = $exclude_items->result_array();
 		$items = array();
-		$excludes_category = array('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066');
+		$excludes_category = array('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041');
 		foreach($exclude_items as $index => $it) array_push($items, $it["ProductID"]);
 		
 		$this->db->select('vendor_products.VendorProductCode,
@@ -225,8 +590,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 
 	public function get_srs_suppliers_item_details($item_code=null,$sup_code=null){
 		$this->db = $this->load->database($this->main_db, TRUE);
-		$sql = "
-		select 
+		$sql = "select 
 		fs.Description as Description, 
 		fs.ProductID as ProductID, 
 		fs.Barcode as ProductCode, 
@@ -238,17 +602,19 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		'' as discountcode3,
 		pp.sellingarea as StockRoom,
 		fs.Packing as reportqty,
-		pp.srs_percentage
+		pp.srs_percentage,
+		pp.LevelField1Code
 		from 
 		(select  ProductID,Barcode,Description,uom,Packing,AverageUnitCost,Price From tfinishedsales
-			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
-			AND (ProductID, Packing) IN(
-			select  ProductID,MIN(Packing)From tfinishedsales
-			WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
-			GROUP BY ProductID)
-			GROUP BY ProductID ORDER BY productid) as fs
-		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.995 ELSE 0.98 END as srs_percentage  from  products where LevelField1Code  not in ('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066') and inactive = 0) as pp
+		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+		AND (ProductID, Packing) IN(
+		select  ProductID,MIN(Packing)From tfinishedsales
+		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
+		GROUP BY ProductID)
+		GROUP BY ProductID ORDER BY productid) as fs
+		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.98 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
 		on fs.ProductID = pp.productid
+		where pp.LevelField1Code  not in ('10055','10050','10053','10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041') and pp.inactive = 0
 		ORDER BY Description";
 		
 
@@ -489,12 +855,15 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 	public function get_franchise_cost($items=array()){
 		
         $this->db = $this->load->database($this->pricing_db, TRUE);
-		$sql ="SELECT p.ProductID,
+		$sql ="select pp.Barcode as Barcode,vp.ProductID as ProductID,vp.averagenetcost as CostOfSales,vp.VendorCode as VendorCode From POS_Products as pp
+		LEFT JOIN VENDOR_Products as vp on pp.ProductID = vp.ProductID and defa = 1
+		where pp.barcode in(".$items.")";
+		/* $sql ="SELECT p.ProductID,
 		CASE WHEN p.CostOfSales = 0 THEN vp.Averagenetcost ELSE p.CostOfSales END as CostOfSales
 		 FROM [dbo].[Products] as p
 		left JOIN VENDOR_Products as vp
 		on p.ProductID = vp.ProductID and defa = 1
-		where p.ProductID in (".$items.") ";
+		where p.ProductID in (".$items.") "; */
 		$res = $this->db->query($sql);
 		$res = $res->result_array();
       return $res;
@@ -520,13 +889,29 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$this->db->insert("order_header_franchisee", $data);
 	}
 
+	function must_have_seven_days_sale($date = null){
+		$this->db = $this->load->database("default", true);
+		$dates = date('Y-m-d');
+		if($date){
+			$dates = $date;
+		}
+		$past_seven_days =  date('Y-m-d', strtotime('-30 days',strtotime($dates)));
+		 $sql = "select count(a.date_posted) as number_of_sales from(
+					SELECT date_posted FROM `product_history` where date_posted >='".$past_seven_days."'
+					 GROUP BY date_posted) as a";
+		
+		$res = $this->db->query($sql);
+	    $res = $res->row();
+	    return $res->number_of_sales;
 
 
-	function get_srs_items_po_divisor($from,$to,$items=array()){
+	}
+
+	function get_srs_items_po_divisor($from,$to,$items=array(), $divisor_ ){
 
 
 		$this->db = $this->load->database("default", true);
-		$this->db->select("product_history.product_id,'30' as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
+		$this->db->select("product_history.product_id,".$divisor_." as divisor,sum(product_history.selling_area_out) - sum(product_history.wholesale_qty) as total_sales",false);
 		$this->db->from('product_history');
 			
 		$this->db->where('product_history.date_posted >=',$from);	

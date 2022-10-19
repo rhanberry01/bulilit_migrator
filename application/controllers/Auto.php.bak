@@ -44,6 +44,30 @@ define("TO", $to);
             
 
   }
+  public function throw_modified_srp(){
+    $res = $this->auto->get_modified_srp();
+    $barcodes = array(); 
+    foreach ($res as $comstore_det) {
+        $barcode =  $comstore_det['barcode'];
+        $srp =  $comstore_det['srp'];
+       
+       $this->auto->update_comstore_srp($barcode,$srp);
+       $this->auto->update_srspos_comstore_srp($barcode,$srp);
+        
+        $barcodes[] =  $barcode;
+    }
+    $barcodes = implode("','",$barcodes);
+    $this->auto->update_comstore_srp_stat($barcodes);
+    echo 'comstore srp updated';
+  }
+
+  public function update_modified_srp(){
+    $ins = $this->auto->insert_new_modifed_srp();
+    echo  $ins.PHP_EOL;
+    $upd = $this->auto->update_modified_srp();
+    echo $upd.PHP_EOL;
+    
+  }
 
   public function create_re_order(){
     $res = $this->auto->update_served_qty();
@@ -56,9 +80,9 @@ define("TO", $to);
             $order_id =  $this->auto->get_re_order_id();
            
             $old_ord = $res['old_ord'];
-            echo $res['customer_name'];
+
             echo  $order_id.'-'. $old_ord;
-           
+            echo $res['customer_name'];
             $header = array(
                 "order_id" =>  $order_id,
                 "order_date" => date('Y-m-d'),
@@ -73,11 +97,92 @@ define("TO", $to);
             ); 
               $last_inserted_id = $this->auto->insert_franchisee_header($header);
               $res_details = $this->auto->insert_franchisee_details($order_id,$old_ord);
-              $upd_details  = $this->auto->update_franchisee_details($old_ord,$order_id);  
+              if($res_details){
+                $upd_details  = $this->auto->update_franchisee_details($old_ord,$order_id);  
+              }
+              
 
            //die(); 
         }  
     } 
+    
+  }
+  public function transfer_purchases_ms_to_aria(){
+    $ms_db = 'branch_nova';
+    $aria_db = 'aria_db';
+
+    $ms_res = $this->auto->get_ms_purchases_franchisee($ms_db);
+
+    foreach ($ms_res as $i => $row) {
+        //  echo $row->type_no.PHP_EOL;
+          $type_no =  $row->type_no;
+          $date_ =  $row->date_;
+          $tot_amt = $row->tot_amt;
+          $OrNum =  $row->OrNum;
+
+          $purchases_result = $this->auto->get_purchases_res($date_,$aria_db,'20', '5450',$type_no);
+         // echo round($purchases_result,2).'=='.round($tot_amt,2).PHP_EOL;
+          if(!(round($purchases_result,2) == round($tot_amt,2) ) ){
+              $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, -$tot_amt,'5450');
+              $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, $tot_amt,'2000');
+          //   echo "Purchases Has been updated!".PHP_EOL;
+          }else{
+              echo "Purchases Already Transferred!".PHP_EOL;
+          }
+
+          
+      }
+      echo 'done!';
+
+  }
+
+  public function transfer_ms_sales_to_aria(){
+    
+    $ms_db = 'branch_nova';
+    $aria_db = 'aria_db';
+
+    $ms_res = $this->auto->get_ms_sales_franchisee($ms_db);
+
+    foreach ($ms_res as $i => $row) {
+        # code...
+        $sales_date =  $row->LogDate;
+        $gross_sales =  $row->total;
+
+        ## DEBIT ##
+        $sales_collection_gross = $this->auto->get_sales_collection($sales_date,$aria_db,'60', '1060000');
+        ## DEBIT ##
+
+         if(!(round($gross_sales,2) == round($sales_collection_gross,2))){
+
+           $get_existed_sales = $this->auto->get_existed_sales_franchisee($sales_date,$aria_db);
+            //## delete  existed_sales
+             $this->auto->delete_gl_franchisee($sales_date,$aria_db,$get_existed_sales);
+
+            $ref = $this->auto->get_ref_franchisee($aria_db);
+            $memo = "Sales";
+            $max_type_no = $this->auto->get_next_trans_no_franchisee($aria_db);
+            $net_sales = $gross_sales;
+
+            ## insert gl trans gross account 1060000
+            $this->auto->insert_gl($aria_db,'60', $max_type_no, $sales_date,'Gross', $gross_sales,'1060000');
+            $this->auto->insert_gl($aria_db,'60', $max_type_no, $sales_date,'Cash on hand', -$gross_sales,'1010');
+
+            if($memo != '')
+            {
+                $this->db_con->add_comments($aria_db,'60', $max_type_no, $sales_date, $memo);
+            }
+            
+                $this->db_con->add_refs($aria_db,'60', $max_type_no,$ref);
+                $this->db_con->add_audit_trail($aria_db,'60', $max_type_no, $sales_date,'');
+            
+        } else {
+            echo $row->LogDate.' Already Transfered and Equal'.PHP_EOL;
+        }
+
+    }
+
+    echo 'Success'.PHP_EOL;
+
     
   }
 
@@ -486,6 +591,15 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         $supplier_code = $settings["supplier"]["code"];
         echo  $supplier_code.'<_'.PHP_EOL;
         $branch_code = BRANCH_USE;
+        $divisor_  = '30';
+        $new_branch_checker  = $this->auto->must_have_seven_days_sale();
+        if($new_branch_checker < 30){
+            $days_ = $to .' -'.$new_branch_checker.' days';
+            $from = date("Y-m-d",strtotime($days_));
+            $divisor_  = $new_branch_checker;
+          
+        }
+      
         $supp_items = $this->auto->get_srs_suppliers_item_details(null,$supplier_code);
         $se_items = array();
 		$lucky_me = array('4807770270017',
@@ -554,9 +668,11 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 				$ptage = 0.99;
 			}
            // $sell_days = $this->auto->get_selling_days_item_by_supplier_branch($branch_code,$supplier_code,$res->ProductCode);
-            $det['srs_percentage'] = $ptage;
+           
+           $det['LevelField1Code'] = $res->LevelField1Code;
+           $det['srs_percentage'] = $ptage;
           
-            $det['avg_off_take_x'] =  7; // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
+            $det['avg_off_take_x'] = ($divisor_ < 30 ? 4 : 7); // ($sell_days == 0 || $sell_days == null) ? $settings['selling_days'] : $sell_days;
             $det['sell_days'] = $det['avg_off_take_x'];
             $det['sugg_po'] = $sugg_po;
             $det['qty'] = $qty;
@@ -570,7 +686,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         }
         $fritems = "'".implode("','", $se_barcodes)."'";   
         $frcost =  $this->auto->get_franchise_cost($fritems);
-        $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items);
+        $divs = $this->auto->get_srs_items_po_divisor($from , $to, $se_items,$divisor_ );
         $min_purchase_piece =  $this->auto->get_frequency(null,$branch_code,$supplier_code);
         $case_order_piece = 0;
         $truckLoad = array();
@@ -633,8 +749,12 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                     }
                   
                    // echo  $srs_percentage;
+                   $item[$des->product_id]['comp_history'] ='Total Sales: '.$item[$des->product_id]['total_sales'].' Ave Offtake: '.$avg_off_take.' QOH: '.$qoh_.' *Suggested Qty is based from '.$from.' to '.$to.'and '.$item[$des->product_id]['avg_off_take_x'].' selling days.' ;
                     $item[$des->product_id]['cost'] = ($FranchiseeDetails[$item[$des->product_id]['barcode']]['costfr'] /  $srs_percentage ) * $item[$des->product_id]['qty_by'];
                    
+                    $item[$des->product_id]['from'] = $from;
+                    $item[$des->product_id]['to'] = $to;
+
                     $item[$des->product_id]['sugg_po'] = ceil($qty);
                     $item[$des->product_id]['qty'] = ceil($qty);
                     $item[$des->product_id]['cost_percentage']  = $srs_percentage;
@@ -834,12 +954,15 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                                     "description"=>$descripiton_,
                                     "qty"=>$row['sugg_po'],
                                     "srp"=> $row['cost'] , //* $row['cost_percentage']
-                                    "subtotal"=>$row['sugg_po'] * $row['cost'] //  ($row['cost']*$row['cost_percentage'])
+                                    "category"=>$row['LevelField1Code'],
+                                    "subtotal"=>$row['sugg_po'] * $row['cost'], //  ($row['cost']*$row['cost_percentage'])
+                                    "comp_history"=>$row['comp_history']
                                 );
 
                                $po_details[] = $det;
                             }
                         }
+                        
                        $this->auto->insert($header);
                        $this->auto->insert_batch($po_details);
                         

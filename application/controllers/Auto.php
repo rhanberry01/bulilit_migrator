@@ -50,9 +50,11 @@ define("TO", $to);
     foreach ($res as $comstore_det) {
         $barcode =  $comstore_det['barcode'];
         $srp =  $comstore_det['srp'];
+		$uomqty =  $comstore_det['uomqty'];
+		$uom =  $comstore_det['uom'];
        
-       $this->auto->update_comstore_srp($barcode,$srp);
-       $this->auto->update_srspos_comstore_srp($barcode,$srp);
+       $this->auto->update_comstore_srp($barcode,$srp,$uomqty,$uom);
+       $this->auto->update_srspos_comstore_srp($barcode,$srp,$uomqty,$uom);
         
         $barcodes[] =  $barcode;
     }

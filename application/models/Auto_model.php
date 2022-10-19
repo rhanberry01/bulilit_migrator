@@ -214,13 +214,15 @@ class Auto_model extends CI_Model {
 	   }
 	}
 
-	public function update_comstore_srp($barcode,$srp){
+	public function update_comstore_srp($barcode,$srp,$uomqty,$uom){
 	   $this->db = $this->load->database("main_branch_mysql", true);
 	   $sql = "UPDATE pos_products 
 	   SET srp = ".$srp.", 
-	   LastDateModified = '".date('Y-m-d H:i:s')."' 
+	   LastDateModified = '".date('Y-m-d H:i:s')."',
+	   uom = '".$uom."',
+	   qty = ".$uomqty."
 	   WHERE Barcode = '".$barcode."' 
-	   and srp < ".$srp."
+	   and srp <= ".$srp."
 	   ";
 	   $res = $this->db->query($sql);
 	   if($res){
@@ -228,14 +230,16 @@ class Auto_model extends CI_Model {
 	   }
 	}
 
-	public function update_srspos_comstore_srp($barcode,$srp){
+	public function update_srspos_comstore_srp($barcode,$srp,$uomqty,$uom){
 		$this->db = $this->load->database("main_branch_mysql", true);
 		$sql = "UPDATE 
 		srspos.pos_products 
 		SET srp = ".$srp.", 
-		LastDateModified = '".date('Y-m-d H:i:s')."' 
+		LastDateModified = '".date('Y-m-d H:i:s')."',
+		uom = '".$uom."',
+	    qty = ".$uomqty."		
 		WHERE Barcode = '".$barcode."'
-		and srp < ".$srp."
+		and srp <= ".$srp."
 		";
 		$res = $this->db->query($sql);
 		if($res){
@@ -266,9 +270,9 @@ class Auto_model extends CI_Model {
 		$this->db = $this->load->database("pricing_db_ms", true);
 		$branch_name = BRANCH_NAME;
 		$past_3days = date("Y-m-d", strtotime("-3 days"));
-		$sql = "INSERT into comstore_srp_update (barcode,pricemodecode,uom,srp,throw,br_code)
-		select Barcode,PriceModeCode,uom,srp,0,'".$branch_name."' from POS_Products where LastDateModified >='".$past_3days."' 
-		and ProductID not in(select ProductID from products where LevelField1Code ='10061')
+		$sql = "INSERT into comstore_srp_update (barcode,pricemodecode,uom,srp,throw,br_code,uomqty)
+		select Barcode,PriceModeCode,uom,srp,0,'".$branch_name."',qty from POS_Products where LastDateModified >='".$past_3days."' 
+		and ProductID not in(select ProductID from products where LevelField1Code IN('10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9092'))
 		and Barcode not in(select Barcode from comstore_srp_update where br_code = '".$branch_name ."')";
 
 	   $res = $this->db->query($sql);
@@ -287,7 +291,7 @@ class Auto_model extends CI_Model {
 		from comstore_srp_update as a
 		LEFT JOIN POS_Products as b
 		on a.barcode = b.Barcode
-		where a.srp != b.srp and a.br_code = '".$branch_name."' ";
+		where a.srp < b.srp and a.br_code = '".$branch_name."' ";
 
 	   $res = $this->db->query($sql);
 	   if($res){
