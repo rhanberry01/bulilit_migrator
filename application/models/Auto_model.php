@@ -612,7 +612,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
 		GROUP BY ProductID)
 		GROUP BY ProductID ORDER BY productid) as fs
-		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.98 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
+		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.975 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
 		on fs.ProductID = pp.productid
 		where pp.LevelField1Code  not in ('10055','10050','10053','10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041') and pp.inactive = 0
 		ORDER BY Description";
