@@ -153,13 +153,16 @@ define("TO", $to);
         ## DEBIT ##
         $sales_collection_gross = $this->auto->get_sales_collection($sales_date,$aria_db,'60', '1060000');
         ## DEBIT ##
-
+	
+			echo $sales_date.''.round($gross_sales,2).'=='.round($sales_collection_gross,2).PHP_EOL;
          if(!(round($gross_sales,2) == round($sales_collection_gross,2))){
 
            $get_existed_sales = $this->auto->get_existed_sales_franchisee($sales_date,$aria_db);
             //## delete  existed_sales
-             $this->auto->delete_gl_franchisee($sales_date,$aria_db,$get_existed_sales);
-
+			if($get_existed_sales){
+				 $this->auto->delete_gl_franchisee($sales_date,$aria_db,$get_existed_sales);
+			}
+            
             $ref = $this->auto->get_ref_franchisee($aria_db);
             $memo = "Sales";
             $max_type_no = $this->auto->get_next_trans_no_franchisee($aria_db);
@@ -168,15 +171,12 @@ define("TO", $to);
             ## insert gl trans gross account 1060000
             $this->auto->insert_gl($aria_db,'60', $max_type_no, $sales_date,'Gross', $gross_sales,'1060000');
             $this->auto->insert_gl($aria_db,'60', $max_type_no, $sales_date,'Cash on hand', -$gross_sales,'1010');
-
-            if($memo != '')
-            {
-                $this->db_con->add_comments($aria_db,'60', $max_type_no, $sales_date, $memo);
-            }
-            
-                $this->db_con->add_refs($aria_db,'60', $max_type_no,$ref);
-                $this->db_con->add_audit_trail($aria_db,'60', $max_type_no, $sales_date,'');
-            
+			
+           
+               //  $this->db_con->add_comments($aria_db,'60', $max_type_no, $sales_date, $memo);
+               // $this->db_con->add_refs($aria_db,'60', $max_type_no,$ref);
+               // $this->db_con->add_audit_trail($aria_db,'60', $max_type_no, $sales_date,'');
+				
         } else {
             echo $row->LogDate.' Already Transfered and Equal'.PHP_EOL;
         }
