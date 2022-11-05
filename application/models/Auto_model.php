@@ -10,8 +10,126 @@ class Auto_model extends CI_Model {
 		$this->main_db = "main_branch_mysql";
 		$this->pricing_db = "pricing_db";
 		$this->customer_code = $this->get_customer_code();
+		$this->msdb = $this->load->database("branch_nova_test", true);
+	}
+
+		public function trans_begin(){
+			$this->msdb->trans_begin();
+		}
+
+		public function trans_status(){
+			$res = $this->msdb->trans_status();
+			return $res;
+		}
+
+			public function trans_rollback(){
+				$this->msdb->trans_rollback();
+		}
+
+		public function trans_commit(){
+			$this->msdb->trans_commit();
+		} 
+
+		public function trans_complete(){
+			$this->msdb->trans_complete();
+		} 
+		
+		
+		
+
+	public function insert_ms_header($data = array()){ 
+		$this->msdb = $this->load->database("branch_nova_test", true);
+		$this->msdb->insert('Movements', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function insert_ms_details($data = array()){ 
+		$this->msdb->insert('MovementLine', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function insert_phistory_details($data = array()){ 
+		$this->msdb->insert('producthistory', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+	 public function update_prodcuts($ProductID,$totalreturned){
+		$sql = "UPDATE Products SET SellingArea = (SellingArea - ".$totalreturned.") where ProductID = ".$ProductID." ";			
+		$res = $this->msdb->query($sql);
+		return $res;
+	 }
+
+	 public function update_mov_header($movementid,$total){
+		$sql = "UPDATE Movements SET NetTotal = $total where movementid = ".$movementid." ";			
+		$res = $this->msdb->query($sql);
+		return $res;
+	 }
+
+	 public function get_productid($barcode){
+		$this->msdb = $this->load->database("branch_nova_test", true);
+		$sql = "select TOP 1 ProductID,ProductCode,uom,qty from POS_Products where Barcode ='".$barcode."' ";				
+		$res = $this->msdb->query($sql);
+		$row = $res->row();
+		return $row;
+	 }
+	 
+	public function get_ms_ctr($code){
+		$this->msdb = $this->load->database("branch_nova_test", true);
+		$sql = "SELECT (counter + 1) as counter FROM [dbo].[Counters] where TransactionTypeCode ='".$code."'";				
+		$res = $this->msdb->query($sql);
+		$row = $res->row();
+		return $row->counter;
+	}	
+	public function update_ms_ctr($code){
+			$upd_sql = "UPDATE [dbo].[Counters] SET counter = (counter + 1)  where TransactionTypeCode ='".$code."'";
+			$this->msdb->query($upd_sql);	
+	}
+	
+
+	public function update_unprocessed_return($return_id,$header_id, $counter_mov){
+        $branch_name = BRANCH_NAME;
+         $this->db = $this->load->database("mysql_pos_db", true);
+         $sql = "UPDATE `franchisee_return_header` SET is_ms_process =  1, OldTerminalNo =  '".$header_id."', OldTransactionNo = '".$counter_mov."'
+		 where return_id in (".$return_id.") and CustomerName = '".$branch_name."' ";
+         $res = $this->db->query($sql);
+		 return  $res;
+    }
+
+	public function get_unprocessed_return(){
+		$branch_name = BRANCH_NAME;
+		 $this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "SELECT DateServed,CustomerName,NewTransactionNo,NewTerminalNo,GROUP_CONCAT(return_id) as return_id,is_ms_process 
+		FROM `franchisee_return_header` 
+		where DateServed is not null and NewTransactionNo is not null and CustomerName = '".$branch_name."'
+		and is_ms_process  = 0 
+		GROUP BY NewTerminalNo,NewTransactionNo
+		ORDER BY DateServed";
+
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
+	}
+
+	public function get_unprocessed_return_details($return_id,$DateServed){
+		$branch_name = BRANCH_NAME;
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "select id,Barcode,ProductName,Srp,ReturnedQty from franchisee_return where return_header_id in(".$return_id.")";
+		//$sql = "select fr.id,fr.Barcode,fr.ProductName,fr.Srp,fr.ReturnedQty,fr.return_header_id,tfs.Barcode,tfs.UOM,tfs.Qty,tfs.Packing
+		//	from franchisee_return  as fr
+		//	LEFT JOIN tfinishedsales as tfs on fr.return_header_id = tfs.OldTransactionNo and fr.Barcode = tfs.Barcode 
+		//	where cast(tfs.logdate as date) = '".$DateServed."' and  fr.return_header_id in(".$return_id.")  and tfs.`ReturnRemarks` = '".$branch_name."' and tfs.`Return` = 1";
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
 
 	}
+
+
+
+
+	
 
 	public function get_purchases_res($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
 
@@ -450,6 +568,7 @@ class Auto_model extends CI_Model {
 			$this->db->query($sql);
 	     }
     }
+
     public function get_customer_code(){
         $array = array();
     	$this->db = $this->load->database("default", true); 

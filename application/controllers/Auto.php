@@ -70,6 +70,183 @@ define("TO", $to);
     echo $upd.PHP_EOL;
     
   }
+  
+  
+  public function movement_header($counter_mov,$movementcode,$NewTransactionNo,$NewTerminalNo,$return_id){
+        $movement_header = array(
+            "movementno " =>  $counter_mov,
+            "movementcode" =>  $movementcode,
+            "referenceno" =>  'R2SSA-'.$NewTransactionNo,
+            "sourceinvoiceno" =>'',
+            "sourcedrno" =>   '',
+            "todescription" =>  'SRS',
+            "toaddress" =>  '',
+            "contactperson" =>  '',
+            "fromdescription" =>  'SRS',
+            "fromaddress" =>  '',
+            "datecreated" =>  date('Y-m-d'),
+            "lastmodifiedby" =>  1,
+            "lastdatemodified" =>  date('Y-m-d'),
+            "status" => 2,
+            "postedby" =>  1,
+            "posteddate" =>  date('Y-m-d'),
+            "terms" =>  '0',
+            "transactiondate" =>  date('Y-m-d'),
+            "fieldstylecode1" =>  null,
+            "nettotal" =>  0,
+            "statusdescription" =>  'POSTED',
+            "totalqty" =>  0,
+            "createdby" =>  1,
+            "remarks" =>  'POS#: '.$NewTerminalNo.' OR #: '.$NewTransactionNo.' Returned #: '.$return_id,
+            "customercode" =>  null,
+            "vendorcode" =>  null,
+            "branchcode" =>  null,
+            "cashdiscount" =>  '',
+            "fieldStylecode" =>  null,
+            "tobranchcode" =>  '',
+            "fieldStylecode" =>  '',
+            "tobranchcode" =>  '',
+            "frbranchcode" =>  '',
+            "sourcemovementno" =>  '',
+            "countered" =>  '0',
+            "transmitted" =>  '0',
+            "WithPayable" =>  '0',
+            "WithReceivable" =>  '0',
+            "OtherExpenses" =>  '0',
+            "ForexRate" =>  '1',
+            "ForexCurrency" =>  'PHP',
+            "SalesmanID" =>  '0',
+            "RECEIVEDBY" =>  ''
+        ); 
+        
+        $header_id  = $this->auto->insert_ms_header($movement_header);
+        return $header_id;
+    
+  } 
+
+  public function process_return(){
+    $unprocessed_return = $this->auto->get_unprocessed_return();
+    
+    foreach ($unprocessed_return as $res) {
+       
+        $movementcode ='R2SSA';
+        $counter  = $this->auto->get_ms_ctr($movementcode); 
+        $counter_mov = str_pad($counter,10,0,STR_PAD_LEFT);
+        $NewTerminalNo =  $res['NewTerminalNo'];
+        $NewTransactionNo =  $res['NewTransactionNo'];
+        $DateServed =  $res['DateServed'];
+        $return_id  = $res['return_id'];
+        echo  $return_id.' : '.$NewTransactionNo.'-'.$NewTerminalNo;
+        $get_unprocessed_return_details = $this->auto->get_unprocessed_return_details($return_id,$DateServed);
+
+       $this->auto->trans_begin();
+       ##insert movement header
+       $header_id =  $this->movement_header($counter_mov,$movementcode,$NewTransactionNo,$NewTerminalNo,$return_id);
+       $totalextended = 0;
+        foreach ($get_unprocessed_return_details as $resd){
+           
+            $uniq =  $resd['id'];
+            $productname =  $resd['ProductName'];
+            $cost = $resd['Srp'];
+            $returned_qty = $resd['ReturnedQty'];
+            $barcode =  $resd['Barcode'];
+           
+            $pos_det = $this->auto->get_productid($barcode);
+            $pack = $pos_det->qty;
+            $uom = $pos_det->uom;
+            $ProductID = $pos_det->ProductID;
+            $ProductCode = $pos_det->ProductCode;
+            $extended = $cost *  $returned_qty;
+
+            $details_mov = array(
+                "MovementID"=> $header_id,
+                "ProductID"=> $ProductID,
+                "ProductCode"=> $ProductCode,
+                "Description"=> $productname,
+                "uom"=>  $uom,
+                "unitcost"=> $cost,
+                "qty"=> $returned_qty,
+                "extended"=>$extended,
+                "pack"=> $pack,
+                "barcode"=> $barcode
+            );
+            ##insert movement details
+
+            $this->auto->insert_ms_details($details_mov);
+
+            $movedescription = 'RETURNED';
+
+            $phistory = array(
+                "productid "=> $ProductID,
+                "barcode"=>  $barcode,
+                "transactionid"=> $header_id,
+                "transactionno"=> $counter_mov,
+                "dateposted"=> date('Y-m-d H:i:s'),
+                "transactiondate"=> date('Y-m-d H:i:s'),
+                "description"=> $movedescription,
+                "beginningsellingarea"=> 0,
+                "beginningstockroom"=> null,
+                "flowstockroom"=> '2',
+                "flowsellingarea"=> '2',
+                "sellingareain"=> null,
+                "sellingareaout"=> $returned_qty * $pack,
+                "stockroomin"=> null,
+                "stockroomout"=> null,
+                "unitcost"=> $cost / $pack,
+                "damagedin"=> null,
+                "damagedout"=> null,
+                "layawayin"=> null,
+                "layawayout"=> null,
+                "onrequestin"=> null,
+                "onrequestout"=> null,
+                "postedby"=> 1,
+                "datedeleted"=> null,
+                "deletedby"=> null,
+                "movementcode"=> 'R2SSA',
+                "terminalno"=> null,
+                "lotno"=> 0,
+                "expirationdate"=> null,
+                "SHAREWITHBRANCH"=> 0,
+                "CANCELLED"=>0,
+                "CANCELLEDBY"=> '',
+                "BeginningDamaged"=> null,
+                "FlowDamaged"=> null
+            );
+
+             ##insert product history
+             $this->auto->insert_phistory_details($phistory);
+
+              ##update product selling area
+              $totalreturned = $returned_qty * $pack;
+              $this->auto->update_prodcuts($ProductID,$totalreturned);
+
+            $totalextended = $totalextended + $extended;
+        }
+
+        $this->auto->update_mov_header($header_id,$totalextended);
+        $this->auto->update_ms_ctr($movementcode);
+
+        if($this->auto->trans_status() === FALSE){
+            $this->auto->trans_rollback();
+            echo "error encountered!";
+            continue;
+        }else{
+            
+           $stat =  $this->auto->update_unprocessed_return($return_id,$header_id, $counter_mov );
+           if($stat){
+            $this->auto->trans_commit();
+            echo "done!!".PHP_EOL;
+           }else{
+             $this->auto->trans_rollback();
+             echo "error encountered!";
+             continue;
+           }
+        }
+        $this->auto->trans_complete(); 
+    }    
+  }
+
+
 
   public function create_re_order(){
     $res = $this->auto->update_served_qty();
