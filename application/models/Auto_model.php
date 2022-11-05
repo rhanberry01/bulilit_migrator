@@ -10,7 +10,7 @@ class Auto_model extends CI_Model {
 		$this->main_db = "main_branch_mysql";
 		$this->pricing_db = "pricing_db";
 		$this->customer_code = $this->get_customer_code();
-		$this->msdb = $this->load->database("branch_nova_test", true);
+		$this->msdb = $this->load->database("branch_nova", true);
 	}
 
 		public function trans_begin(){
@@ -38,7 +38,7 @@ class Auto_model extends CI_Model {
 		
 
 	public function insert_ms_header($data = array()){ 
-		$this->msdb = $this->load->database("branch_nova_test", true);
+		$this->msdb = $this->load->database("branch_nova", true);
 		$this->msdb->insert('Movements', $data);
   		 $insert_id = $this->msdb->insert_id();
 		 return  $insert_id;
@@ -68,7 +68,7 @@ class Auto_model extends CI_Model {
 	 }
 
 	 public function get_productid($barcode){
-		$this->msdb = $this->load->database("branch_nova_test", true);
+		$this->msdb = $this->load->database("branch_nova", true);
 		$sql = "select TOP 1 ProductID,ProductCode,uom,qty from POS_Products where Barcode ='".$barcode."' ";				
 		$res = $this->msdb->query($sql);
 		$row = $res->row();
@@ -76,7 +76,7 @@ class Auto_model extends CI_Model {
 	 }
 	 
 	public function get_ms_ctr($code){
-		$this->msdb = $this->load->database("branch_nova_test", true);
+		$this->msdb = $this->load->database("branch_nova", true);
 		$sql = "SELECT (counter + 1) as counter FROM [dbo].[Counters] where TransactionTypeCode ='".$code."'";				
 		$res = $this->msdb->query($sql);
 		$row = $res->row();
