@@ -515,7 +515,9 @@ class Auto_model extends CI_Model {
 	 public function get_res_for_trans($TransactionNo,$TerminalNo){ 
 		//$this->db = $this->load->database("mysql_pos_db_franchisee", true);
 		$this->db = $this->load->database("mysql_pos_db", true);
-		$sql = "select ProductID as stock_id,ProductID as stock_id_2,Description as description ,Barcode as barcode,UOM as uom,Price as cost ,price as net_of_vat ,sum(Qty) as qty_out, sum(Qty) as actual_qty_out 
+		$sql = "select ProductID as stock_id,ProductID as stock_id_2,Description as description,
+		Barcode as barcode,UOM as uom,IFNULL(Price,0) as cost ,
+		IFNULL(price,0) as net_of_vat ,sum(Qty) as qty_out, sum(Qty) as actual_qty_out  
 		from tfinishedsales where TransactionNo='".$TransactionNo."' and TerminalNo ='".$TerminalNo."'
 		and Voided = 0 and `Return` = 0
 		GROUP BY productID,ProductID,Description,Barcode,UOM,Price,price
