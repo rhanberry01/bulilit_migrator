@@ -77,7 +77,7 @@ define("TO", $to);
             "movementno " =>  $counter_mov,
             "movementcode" =>  $movementcode,
             "referenceno" =>  'R2SSA-'.$NewTransactionNo,
-            "sourceinvoiceno" =>'',
+            "sourceinvoiceno" =>$NewTransactionNo,
             "sourcedrno" =>   '',
             "todescription" =>  'SRS',
             "toaddress" =>  '',
