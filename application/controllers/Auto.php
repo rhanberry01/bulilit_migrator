@@ -286,6 +286,34 @@ define("TO", $to);
     } 
     
   }
+  
+   public function transfer_returns_ms_to_aria(){
+    
+	$ms_db = 'branch_nova';
+    $aria_db = 'aria_db';
+	
+	$ms_res = $this->auto->get_ms_returns_franchisee($ms_db);
+	 foreach ($ms_res as $i => $row) {
+		  $type_no =  $row->type_no;
+          $date_ =  $row->date_;
+          $tot_amt = $row->tot_amt;
+          $OrNum =  $row->OrNum;
+		  $Remarks =  $row->Remarks;
+		  $purchases_result = $this->auto->get_purchases_res($date_,$aria_db,'53', '2000',$type_no);
+		  
+		  if(!(round($purchases_result,2) == round($tot_amt,2) ) ){
+			  
+              $this->auto->insert_gl($aria_db,'53', $type_no, $date_,$Remarks, -$tot_amt,'2000');
+              $this->auto->insert_gl($aria_db,'53', $type_no, $date_,$Remarks, $tot_amt,'5500');
+          }else{
+              echo "Returns Already Transferred!".PHP_EOL;
+          }
+		  
+	 }
+  
+  }
+  
+  
   public function transfer_purchases_ms_to_aria(){
     $ms_db = 'branch_nova';
     $aria_db = 'aria_db';

@@ -146,6 +146,27 @@ class Auto_model extends CI_Model {
 
     }
 
+	 public function get_ms_returns_franchisee($ms_db){
+        $end_date = date('Y-m-d');
+        $past_30days = date('Y-m-d', strtotime('-30 days'));
+		
+		$this->ddb = $this->load->database($ms_db, true);
+		
+		$sql = "select 
+			(MovementNo*1) as type_no,cast(m.posteddate as date) as date_,SUM(ROUND((ml.qty*unitcost),4)) as tot_amt, SourceInvoiceNo as OrNum ,Remarks 
+			from Movements as m
+			LEFT JOIN MovementLine as ml
+			on m.MovementID = ml.MovementID 
+			where MovementCode = 'R2SSA'
+			and cast(m.posteddate as date) >='".$past_30days."' and cast(m.posteddate as date) <='". $end_date."'
+			GROUP BY cast(m.posteddate as date),MovementNo,SourceInvoiceNo,Remarks ORDER BY MovementNo
+			";
+		$result = $this->ddb->query($sql);
+		$result = $result->result();
+		return  $result;
+	 }
+
+
     public function get_ms_purchases_franchisee($ms_db){
         $end_date = date('Y-m-d');
         $past_30days = date('Y-m-d', strtotime('-30 days'));
