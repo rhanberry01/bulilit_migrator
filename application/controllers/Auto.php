@@ -304,7 +304,7 @@ define("TO", $to);
 		  if(!(round($purchases_result,2) == round($tot_amt,2) ) ){
 			  
               $this->auto->insert_gl($aria_db,'53', $type_no, $date_,$Remarks, -$tot_amt,'2000');
-              $this->auto->insert_gl($aria_db,'53', $type_no, $date_,$Remarks, $tot_amt,'5500');
+              $this->auto->insert_gl($aria_db,'53', $type_no, $date_,$Remarks, $tot_amt,'5460');
           }else{
               echo "Returns Already Transferred!".PHP_EOL;
           }
