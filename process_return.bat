@@ -1,2 +1,2 @@
 C:\xampp\php\php  index.php auto process_return
-pause
+exit

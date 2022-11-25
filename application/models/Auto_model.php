@@ -398,7 +398,7 @@ class Auto_model extends CI_Model {
 		
 		$this->db = $this->load->database("pricing_db_ms", true);
 		$branch_name = BRANCH_NAME;
-		$sql = "select  TOP 50 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
+		$sql = "select  TOP 500 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
 	   $res = $this->db->query($sql);
 	   $res = $res->result_array();
 	   return $res;
