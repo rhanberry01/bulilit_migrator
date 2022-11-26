@@ -143,8 +143,78 @@ class Auto_model extends CI_Model {
         }else{
             return  0;
         }
-
     }
+
+	public function create_ending_inventory($ms_db){
+		$this->trans_begin();
+		
+		$this->ddb = $this->load->database($ms_db, true);
+
+		$sqldelete = "DELETE FROM ProductsBackUpNew WHERE CAST(BackUpDate as date) = CAST(GETDATE() AS DATE) ";
+		$result = $this->ddb->query($sqldelete);
+
+
+		$sqlinsert = "INSERT	INTO ProductsBackUpNew
+					(
+					dbo.ProductsBackUpNew.ProductID,
+					dbo.ProductsBackUpNew.ProductCode,
+					dbo.ProductsBackUpNew.Description,
+					dbo.ProductsBackUpNew.reportuom,
+					dbo.ProductsBackUpNew.reportqty,
+					dbo.ProductsBackUpNew.inactive,
+					dbo.ProductsBackUpNew.SellingArea,
+					dbo.ProductsBackUpNew.StockRoom,
+					dbo.ProductsBackUpNew.Damaged,
+					dbo.ProductsBackUpNew.CostOfSales,
+					dbo.ProductsBackUpNew.GlobalID,
+					dbo.ProductsBackUpNew.BackUpDate,
+					dbo.ProductsBackUpNew.pVatable,
+					dbo.ProductsBackUpNew.Vendorcode,
+					dbo.ProductsBackUpNew.datecheck
+					)
+					SELECT
+					Products.ProductID,
+					Products.ProductCode,
+					Products.Description,
+					Products.reportuom,
+					Products.reportqty,
+					Products.inactive,
+					(ISNULL(Products.SellingArea,0) - ISNULL(cmovements.TotalQty,0)) as SellingArea,
+					Products.StockRoom,
+					Products.Damaged,
+					Products.CostOfSales,
+					Products.GlobalID,
+					CAST(GETDATE() AS DATE),
+					Products.pVatable,
+					Products.vendorcode,
+					GETDATE()
+					FROM
+					Products as Products LEFT JOIN
+					(select ml.ProductID,
+					SUM(CASE 
+					WHEN MovementCode IN('STI','AIG','IGSA','IGBO')
+					THEN (ml.qty*ml.pack)
+					ELSE -(ml.qty*ml.pack)
+					END) as TotalQty from movements as m
+					LEFT JOIN MovementLine as ml
+					on m.MovementID = ml.MovementID 
+					WHERE CAST(m.PostedDate as DATE)  =  CAST(GETDATE() AS DATE)
+					GROUP BY ml.ProductID
+					) as cmovements
+					on Products.ProductID = cmovements.ProductID
+		";
+		$result = $this->ddb->query($sqlinsert);
+
+		if($this->auto->trans_status() === FALSE){
+            $this->auto->trans_rollback();
+            return "Error Encountered! Try Again";
+            continue;
+		}else{
+			$this->auto->trans_commit();
+			return "Succes! Creating Ending Invetory";
+		}
+		$this->auto->trans_complete(); 
+	}
 
 	 public function get_ms_returns_franchisee($ms_db){
         $end_date = date('Y-m-d');
@@ -398,10 +468,15 @@ class Auto_model extends CI_Model {
 		
 		$this->db = $this->load->database("pricing_db_ms", true);
 		$branch_name = BRANCH_NAME;
-		$sql = "select  TOP 500 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
-	   $res = $this->db->query($sql);
-	   $res = $res->result_array();
-	   return $res;
+		//$sql = "select  TOP 500 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
+		$sql = "SELECT TOP 500 csu.id,csu.barcode,csu.pricemodecode,csu.uom,csu.srp,csu.throw,csu.br_code,isnull(csu.uomqty,uom.Qty) as uomqty
+				FROM [dbo].[comstore_srp_update] as csu
+				LEFT JOIN UOM as uom
+				on csu.uom = uom.UOM
+				where throw = 0 and  br_code = '".$branch_name ."'";
+	   	$res = $this->db->query($sql);
+	   	$res = $res->result_array();
+	   	return $res;
 	}
 
 	public function insert_new_modifed_srp(){

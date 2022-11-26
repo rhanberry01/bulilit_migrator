@@ -287,6 +287,13 @@ define("TO", $to);
     
   }
   
+  public function create_ending_inventory(){
+    $ms_db = 'branch_nova'; // localbranch
+    $ms_res = $this->auto->create_ending_inventory($ms_db);
+    echo $ms_res;
+  }
+
+
    public function transfer_returns_ms_to_aria(){
     
 	$ms_db = 'branch_nova';
