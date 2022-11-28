@@ -1128,16 +1128,24 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$sql ="SELECT (CASE WHEN isnull(max(order_id)) THEN 0 ELSE max(order_id) END)+1 as order_id FROM `order_header_franchisee`;";
 		$res = $this->db->query($sql);
 		$res = $res->row();
-      return $res->order_id;
+     	 return $res->order_id;
     }
 
-	function insert_batch($data=array()){
+	function check_created_po($date , $branch){
 		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$sql ="SELECT count(order_id) as order_id FROM order_header_franchisee where order_date ='".$date."' and customer_name = '".$branch."' ";
+		$res = $this->pos_db->query($sql);
+		$res = $res->row();
+     	 return $res->order_id;
+	}
+
+	function insert_batch($data=array()){
+		//$this->pos_db = $this->load->database("mysql_pos_db", True);
 		$this->pos_db->insert_batch("order_details_franchisee", $data);
 	}
 
 	function insert($data=array()){
-		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		//$this->pos_db = $this->load->database("mysql_pos_db", True);
 		$this->pos_db->insert("order_header_franchisee", $data);
 	}
 
