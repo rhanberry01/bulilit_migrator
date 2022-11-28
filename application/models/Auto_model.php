@@ -11,6 +11,8 @@ class Auto_model extends CI_Model {
 		$this->pricing_db = "pricing_db";
 		$this->customer_code = $this->get_customer_code();
 		$this->msdb = $this->load->database("branch_nova", true);
+		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		
 	}
 
 		public function trans_begin(){
@@ -33,6 +35,29 @@ class Auto_model extends CI_Model {
 		public function trans_complete(){
 			$this->msdb->trans_complete();
 		} 
+
+		######### mysql transaction
+		public function trans_begin_pos_db(){
+			$this->pos_db->trans_begin();
+		}
+
+		public function trans_status_pos_db(){
+			$res = $this->pos_db->trans_status();
+			return $res;
+		}
+
+			public function trans_rollback_pos_db(){
+				$this->pos_db->trans_rollback();
+		}
+
+		public function trans_commit_pos_db(){
+			$this->pos_db->trans_commit();
+		} 
+
+		public function trans_complete_pos_db(){
+			$this->pos_db->trans_complete();
+		} 
+		########
 		
 		
 		
@@ -128,8 +153,18 @@ class Auto_model extends CI_Model {
 
 
 
-
 	
+	public function delete_purchases($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "DELETE  FROM  0_gl_trans 
+        where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.") and type_no ='".$type_no."' ";
+       $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result;
+        }
+    }
 
 	public function get_purchases_res($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
 
@@ -1097,13 +1132,13 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
     }
 
 	function insert_batch($data=array()){
-		$this->db = $this->load->database("mysql_pos_db", True);
-		$this->db->insert_batch("order_details_franchisee", $data);
+		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$this->pos_db->insert_batch("order_details_franchisee", $data);
 	}
 
 	function insert($data=array()){
-		$this->db = $this->load->database("mysql_pos_db", True);
-		$this->db->insert("order_header_franchisee", $data);
+		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$this->pos_db->insert("order_header_franchisee", $data);
 	}
 
 	function must_have_seven_days_sale($date = null){

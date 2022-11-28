@@ -337,6 +337,10 @@ define("TO", $to);
           $purchases_result = $this->auto->get_purchases_res($date_,$aria_db,'20', '5450',$type_no);
          // echo round($purchases_result,2).'=='.round($tot_amt,2).PHP_EOL;
           if(!(round($purchases_result,2) == round($tot_amt,2) ) ){
+            if($purchases_result != 0){
+                $this->auto->delete_purchases($date_,$aria_db,'20', '5450',$type_no);
+            }
+            
               $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, -$tot_amt,'5450');
               $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, $tot_amt,'2000');
           //   echo "Purchases Has been updated!".PHP_EOL;
@@ -806,6 +810,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
         echo  $supplier_code.'<_'.PHP_EOL;
         $branch_code = BRANCH_USE;
         $divisor_  = '30';
+
         $new_branch_checker  = $this->auto->must_have_seven_days_sale();
         if($new_branch_checker < 30){
             $days_ = $to .' -'.$new_branch_checker.' days';
@@ -869,10 +874,6 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             $det['avg_off_take'] = 0;
             
 			$ptage =   $res->srs_percentage;
-
-            if($res->ProductCode == '915455'){
-                echo PHP_EOL.$ptage.'---**'. PHP_EOL;
-            }
 			
             if (in_array($res->ProductCode,$lucky_me)){
 				$ptage = 0.99;
@@ -987,11 +988,8 @@ provided that both dates are after 1970. Also only works for dates up to the yea
        $user = null;
          echo date("Y-m-d h:i:s").PHP_EOL;
          $supplier = null;
-         //$supplier = "COINFD001";
          $excluded_vendors=array();
         $excluded_vendors = $this->auto->get_frequency_excluded();
-        //$excluded_vendors=implode(",", $excluded_vendors);
-        
         $supplier_frequency = $this->auto->get_frequency($user,BRANCH_USE,$supplier,array(),"1","1", null, null, "1",$excluded_vendors);
         $last_date = date('Y-m-t');
         $last_day = explode("-", $last_date);
@@ -1008,9 +1006,7 @@ provided that both dates are after 1970. Also only works for dates up to the yea
             unset($sf["date_created"]);
             $day_chosen = $sf["days"];
             $po_schedule = $sf["frequency"];
-            
-            //if($po_schedule == "F4") continue;
-            echo $sf["sf_supplier"].'->>'.PHP_EOL; // die();
+            echo $sf["sf_supplier"].'->>'.PHP_EOL; 
             if($sf["sf_supplier"]=='SANROB001'){
                 $sf["from"] = $from;
                 $sf["to"] = $to;
