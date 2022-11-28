@@ -343,7 +343,7 @@ define("TO", $to);
             
               $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, -$tot_amt,'5450');
               $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, $tot_amt,'2000');
-          //   echo "Purchases Has been updated!".PHP_EOL;
+             echo "Purchases Has been updated!".PHP_EOL;
           }else{
               echo "Purchases Already Transferred!".PHP_EOL;
           }
@@ -986,9 +986,16 @@ provided that both dates are after 1970. Also only works for dates up to the yea
 
      public function index(){
        $user = null;
-         echo date("Y-m-d h:i:s").PHP_EOL;
-         $supplier = null;
-         $excluded_vendors=array();
+        echo date("Y-m-d h:i:s").PHP_EOL;
+        $supplier = null;
+        $excluded_vendors=array();
+        ##check if auto_po already exist
+
+        $check_created_po = $this->auto->check_created_po(date('Y-m-d'),BRANCH_NAME);
+        if($check_created_po != 0){
+            exit('Auto PO Already Created!');
+        }
+
         $excluded_vendors = $this->auto->get_frequency_excluded();
         $supplier_frequency = $this->auto->get_frequency($user,BRANCH_USE,$supplier,array(),"1","1", null, null, "1",$excluded_vendors);
         $last_date = date('Y-m-t');
@@ -1172,10 +1179,19 @@ provided that both dates are after 1970. Also only works for dates up to the yea
                                $po_details[] = $det;
                             }
                         }
-                        
-                       $this->auto->insert($header);
-                       $this->auto->insert_batch($po_details);
-                        
+                        $this->auto->trans_begin_pos_db();
+                           
+                        $this->auto->insert($header);
+                            $this->auto->insert_batch($po_details);
+
+                        if($this->auto->trans_status_pos_db() === FALSE){
+                            $this->auto->trans_rollback_pos_db();
+                            echo "Server Error Encountered!".PHP_EOL;
+                        }else{
+                            $this->auto->trans_commit_pos_db();
+                        }
+                       
+                        $this->auto->trans_complete_pos_db(); 
 
                         echo 'done!';
 
