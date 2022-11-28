@@ -338,7 +338,7 @@ define("TO", $to);
          // echo round($purchases_result,2).'=='.round($tot_amt,2).PHP_EOL;
           if(!(round($purchases_result,2) == round($tot_amt,2) ) ){
             if($purchases_result != 0){
-                $this->auto->delete_purchases($date_,$aria_db,'20', '5450',$type_no);
+                $this->auto->delete_purchases($date_,$aria_db,'20', "'5450','2000'",$type_no);
             }
             
               $this->auto->insert_gl($aria_db,'20', $type_no, $date_,'Purchase MoveNo:'.$type_no.' OR#: '.$OrNum, -$tot_amt,'5450');
