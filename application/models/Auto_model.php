@@ -214,7 +214,7 @@ class Auto_model extends CI_Model {
 					Products.reportuom,
 					Products.reportqty,
 					Products.inactive,
-					(ISNULL(Products.SellingArea,0) - ISNULL(cmovements.TotalQty,0)) as SellingArea,
+					(ISNULL(Products.SellingArea,0) - ISNULL(cmovements.TotalQty,0) - ISNULL(rline.TotalQty,0)) as SellingArea,
 					Products.StockRoom,
 					Products.Damaged,
 					Products.CostOfSales,
@@ -237,6 +237,15 @@ class Auto_model extends CI_Model {
 					GROUP BY ml.ProductID
 					) as cmovements
 					on Products.ProductID = cmovements.ProductID
+					LEFT JOIN(
+					select rl.ProductID,
+					SUM(rl.qty*rl.pack) as TotalQty from Receiving as r
+					LEFT JOIN ReceivingLine as rl
+					on r.ReceivingID = rl.ReceivingID
+					WHERE CAST(r.PostedDate as DATE)  =  CAST(GETDATE() AS DATE)
+					GROUP BY rl.ProductID
+					) as rline
+					on Products.ProductID = rline.ProductID
 		";
 		$result = $this->ddb->query($sqlinsert);
 
