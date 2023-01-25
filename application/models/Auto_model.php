@@ -273,6 +273,7 @@ class Auto_model extends CI_Model {
 			on m.MovementID = ml.MovementID 
 			where MovementCode = 'R2SSA'
 			and cast(m.posteddate as date) >='".$past_30days."' and cast(m.posteddate as date) <='". $end_date."'
+			and (SourceInvoiceNo is not null and SourceInvoiceNo !='')
 			GROUP BY cast(m.posteddate as date),MovementNo,SourceInvoiceNo,Remarks ORDER BY MovementNo
 			";
 		$result = $this->ddb->query($sql);
