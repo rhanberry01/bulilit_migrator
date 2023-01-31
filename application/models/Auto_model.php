@@ -565,7 +565,7 @@ class Auto_model extends CI_Model {
 		select ".$order_id.",b.barcode,b.description,(b.qty - served_qty) as qty,b.srp,((b.qty - served_qty)*b.srp) as subtotal,b.category from order_header_franchisee as a LEFT JOIN 
 		order_details_franchisee as b
 		on a.order_id = b.order_id
-		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
+		where a.TerminalNo is not null AND a.date_served >='2023-01-01' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
 		and re_order_id is null and a.order_id ='".$old_ord."'
 		HAVING qty >= 1
 		ORDER BY a.order_id
@@ -584,10 +584,10 @@ class Auto_model extends CI_Model {
 	   $sql = "UPDATE 
 	   order_details_franchisee  b RIGHT JOIN
 	   `order_header_franchisee`   a  on a.order_id = b.order_id
-	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2022-08-23' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
+	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2023-01-01' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
 	   ON a.TerminalNo = tf.TerminalNo and a.TransactionNo = tf.TransactionNo and b.barcode = tf.Barcode 
 	   SET b.served_qty = CASE WHEN tf.Barcode is null THEN 0 ELSE tf.served  END
-	   where a.TerminalNo is not null AND a.date_served >='2022-08-29' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
+	   where a.TerminalNo is not null AND a.date_served >='2023-01-01' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
 	   ";
 	   //echo $sql;
 	   $res = $this->db->query($sql);
@@ -605,7 +605,7 @@ class Auto_model extends CI_Model {
 				SUM(((b.qty - b.served_qty)*b.srp)) as total from order_header_franchisee as a LEFT JOIN 
 				order_details_franchisee as b
 				on a.order_id = b.order_id
-				where a.TerminalNo is not null AND a.date_served >='2022-08-29'
+				where a.TerminalNo is not null AND a.date_served >='2023-01-01'
 				and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
 				and re_order_id is null  
 				GROUP BY a.order_id,customer_name
@@ -1117,8 +1117,13 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 	public function get_franchise_cost($items=array()){
 		
         $this->db = $this->load->database($this->pricing_db, TRUE);
-		$sql ="select pp.Barcode as Barcode,vp.ProductID as ProductID,vp.averagenetcost as CostOfSales,vp.VendorCode as VendorCode From POS_Products as pp
-		LEFT JOIN VENDOR_Products as vp on pp.ProductID = vp.ProductID and defa = 1
+		//add products costof saless  if cos of sales is greater than ave cost  use costof sales
+		$sql ="select pp.Barcode as Barcode,vp.ProductID as ProductID,
+			CASE WHEN p.CostOfSales > vp.averagenetcost  THEN p.CostOfSales ELSE vp.averagenetcost END as CostOfSales,
+			vp.VendorCode as VendorCode From POS_Products as pp
+					LEFT JOIN VENDOR_Products as vp on pp.ProductID = vp.ProductID and defa = 1
+			LEFT JOIN Products as p
+			on pp.ProductID = p.ProductID
 		where pp.barcode in(".$items.")";
 		/* $sql ="SELECT p.ProductID,
 		CASE WHEN p.CostOfSales = 0 THEN vp.Averagenetcost ELSE p.CostOfSales END as CostOfSales

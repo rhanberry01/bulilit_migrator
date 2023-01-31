@@ -10,8 +10,161 @@ class Auto_model extends CI_Model {
 		$this->main_db = "main_branch_mysql";
 		$this->pricing_db = "pricing_db";
 		$this->customer_code = $this->get_customer_code();
+		$this->msdb = $this->load->database("branch_nova", true);
+		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		
+	}
+
+		public function trans_begin(){
+			$this->msdb->trans_begin();
+		}
+
+		public function trans_status(){
+			$res = $this->msdb->trans_status();
+			return $res;
+		}
+
+			public function trans_rollback(){
+				$this->msdb->trans_rollback();
+		}
+
+		public function trans_commit(){
+			$this->msdb->trans_commit();
+		} 
+
+		public function trans_complete(){
+			$this->msdb->trans_complete();
+		} 
+
+		######### mysql transaction
+		public function trans_begin_pos_db(){
+			$this->pos_db->trans_begin();
+		}
+
+		public function trans_status_pos_db(){
+			$res = $this->pos_db->trans_status();
+			return $res;
+		}
+
+			public function trans_rollback_pos_db(){
+				$this->pos_db->trans_rollback();
+		}
+
+		public function trans_commit_pos_db(){
+			$this->pos_db->trans_commit();
+		} 
+
+		public function trans_complete_pos_db(){
+			$this->pos_db->trans_complete();
+		} 
+		########
+		
+		
+		
+
+	public function insert_ms_header($data = array()){ 
+		$this->msdb = $this->load->database("branch_nova", true);
+		$this->msdb->insert('Movements', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function insert_ms_details($data = array()){ 
+		$this->msdb->insert('MovementLine', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+
+	 public function insert_phistory_details($data = array()){ 
+		$this->msdb->insert('producthistory', $data);
+  		 $insert_id = $this->msdb->insert_id();
+		 return  $insert_id;
+	 }
+	 public function update_prodcuts($ProductID,$totalreturned){
+		$sql = "UPDATE Products SET SellingArea = (SellingArea - ".$totalreturned.") where ProductID = ".$ProductID." ";			
+		$res = $this->msdb->query($sql);
+		return $res;
+	 }
+
+	 public function update_mov_header($movementid,$total){
+		$sql = "UPDATE Movements SET NetTotal = $total where movementid = ".$movementid." ";			
+		$res = $this->msdb->query($sql);
+		return $res;
+	 }
+
+	 public function get_productid($barcode){
+		$this->msdb = $this->load->database("branch_nova", true);
+		$sql = "select TOP 1 ProductID,ProductCode,uom,qty from POS_Products where Barcode ='".$barcode."' ";				
+		$res = $this->msdb->query($sql);
+		$row = $res->row();
+		return $row;
+	 }
+	 
+	public function get_ms_ctr($code){
+		$this->msdb = $this->load->database("branch_nova", true);
+		$sql = "SELECT (counter + 1) as counter FROM [dbo].[Counters] where TransactionTypeCode ='".$code."'";				
+		$res = $this->msdb->query($sql);
+		$row = $res->row();
+		return $row->counter;
+	}	
+	public function update_ms_ctr($code){
+			$upd_sql = "UPDATE [dbo].[Counters] SET counter = (counter + 1)  where TransactionTypeCode ='".$code."'";
+			$this->msdb->query($upd_sql);	
+	}
+	
+
+	public function update_unprocessed_return($return_id,$header_id, $counter_mov){
+        $branch_name = BRANCH_NAME;
+         $this->db = $this->load->database("mysql_pos_db", true);
+         $sql = "UPDATE `franchisee_return_header` SET is_ms_process =  1, OldTerminalNo =  '".$header_id."', OldTransactionNo = '".$counter_mov."'
+		 where return_id in (".$return_id.") and CustomerName = '".$branch_name."' ";
+         $res = $this->db->query($sql);
+		 return  $res;
+    }
+
+	public function get_unprocessed_return(){
+		$branch_name = BRANCH_NAME;
+		 $this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "SELECT DateServed,CustomerName,NewTransactionNo,NewTerminalNo,GROUP_CONCAT(return_id) as return_id,is_ms_process 
+		FROM `franchisee_return_header` 
+		where DateServed is not null and NewTransactionNo is not null and CustomerName = '".$branch_name."'
+		and is_ms_process  = 0 
+		GROUP BY NewTerminalNo,NewTransactionNo
+		ORDER BY DateServed";
+
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
+	}
+
+	public function get_unprocessed_return_details($return_id,$DateServed){
+		$branch_name = BRANCH_NAME;
+		$this->db = $this->load->database("mysql_pos_db", true);
+		$sql = "select id,Barcode,ProductName,Srp,ReturnedQty from franchisee_return where return_header_id in(".$return_id.")";
+		//$sql = "select fr.id,fr.Barcode,fr.ProductName,fr.Srp,fr.ReturnedQty,fr.return_header_id,tfs.Barcode,tfs.UOM,tfs.Qty,tfs.Packing
+		//	from franchisee_return  as fr
+		//	LEFT JOIN tfinishedsales as tfs on fr.return_header_id = tfs.OldTransactionNo and fr.Barcode = tfs.Barcode 
+		//	where cast(tfs.logdate as date) = '".$DateServed."' and  fr.return_header_id in(".$return_id.")  and tfs.`ReturnRemarks` = '".$branch_name."' and tfs.`Return` = 1";
+		$res = $this->db->query($sql);
+	    $res = $res->result_array();
+	    return $res;
 
 	}
+
+
+
+	
+	public function delete_purchases($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
+
+        $this->ddb = $this->load->database($aria_db, true);
+        $sql = "DELETE  FROM  0_gl_trans 
+        where tran_date = '".$sales_date."' and type ='".$type."' and account IN (".$account.") and type_no ='".$type_no."' ";
+       $result = $this->ddb->query($sql);
+        $result = $result->row();
+        if($result){
+            return  $result;
+        }
+    }
 
 	public function get_purchases_res($sales_date = null,$aria_db = null,$type = null, $account = null,$type_no = null){
 
@@ -25,12 +178,113 @@ class Auto_model extends CI_Model {
         }else{
             return  0;
         }
-
     }
+
+	public function create_ending_inventory($ms_db){
+		$this->trans_begin();
+		
+		$this->ddb = $this->load->database($ms_db, true);
+
+		$sqldelete = "DELETE FROM ProductsBackUpNew WHERE CAST(BackUpDate as date) = CAST(GETDATE() AS DATE) ";
+		$result = $this->ddb->query($sqldelete);
+
+
+		$sqlinsert = "INSERT	INTO ProductsBackUpNew
+					(
+					dbo.ProductsBackUpNew.ProductID,
+					dbo.ProductsBackUpNew.ProductCode,
+					dbo.ProductsBackUpNew.Description,
+					dbo.ProductsBackUpNew.reportuom,
+					dbo.ProductsBackUpNew.reportqty,
+					dbo.ProductsBackUpNew.inactive,
+					dbo.ProductsBackUpNew.SellingArea,
+					dbo.ProductsBackUpNew.StockRoom,
+					dbo.ProductsBackUpNew.Damaged,
+					dbo.ProductsBackUpNew.CostOfSales,
+					dbo.ProductsBackUpNew.GlobalID,
+					dbo.ProductsBackUpNew.BackUpDate,
+					dbo.ProductsBackUpNew.pVatable,
+					dbo.ProductsBackUpNew.Vendorcode,
+					dbo.ProductsBackUpNew.datecheck
+					)
+					SELECT
+					Products.ProductID,
+					Products.ProductCode,
+					Products.Description,
+					Products.reportuom,
+					Products.reportqty,
+					Products.inactive,
+					(ISNULL(Products.SellingArea,0) - ISNULL(cmovements.TotalQty,0) - ISNULL(rline.TotalQty,0)) as SellingArea,
+					Products.StockRoom,
+					Products.Damaged,
+					Products.CostOfSales,
+					Products.GlobalID,
+					CAST(GETDATE() AS DATE),
+					Products.pVatable,
+					Products.vendorcode,
+					GETDATE()
+					FROM
+					Products as Products LEFT JOIN
+					(select ml.ProductID,
+					SUM(CASE 
+					WHEN MovementCode IN('STI','AIG','IGSA','IGBO')
+					THEN (ml.qty*ml.pack)
+					ELSE -(ml.qty*ml.pack)
+					END) as TotalQty from movements as m
+					LEFT JOIN MovementLine as ml
+					on m.MovementID = ml.MovementID 
+					WHERE CAST(m.PostedDate as DATE)  =  CAST(GETDATE() AS DATE)
+					GROUP BY ml.ProductID
+					) as cmovements
+					on Products.ProductID = cmovements.ProductID
+					LEFT JOIN(
+					select rl.ProductID,
+					SUM(rl.qty*rl.pack) as TotalQty from Receiving as r
+					LEFT JOIN ReceivingLine as rl
+					on r.ReceivingID = rl.ReceivingID
+					WHERE CAST(r.PostedDate as DATE)  =  CAST(GETDATE() AS DATE)
+					GROUP BY rl.ProductID
+					) as rline
+					on Products.ProductID = rline.ProductID
+		";
+		$result = $this->ddb->query($sqlinsert);
+
+		if($this->auto->trans_status() === FALSE){
+            $this->auto->trans_rollback();
+            return "Error Encountered! Try Again";
+            continue;
+		}else{
+			$this->auto->trans_commit();
+			return "Succes! Creating Ending Invetory";
+		}
+		$this->auto->trans_complete(); 
+	}
+
+	 public function get_ms_returns_franchisee($ms_db){
+        $end_date = date('Y-m-d');
+        $past_30days = date('Y-m-d', strtotime('-30 days'));
+		
+		$this->ddb = $this->load->database($ms_db, true);
+		
+		$sql = "select 
+			(MovementNo*1) as type_no,cast(m.posteddate as date) as date_,SUM(ROUND((ml.qty*unitcost),4)) as tot_amt, SourceInvoiceNo as OrNum ,Remarks 
+			from Movements as m
+			LEFT JOIN MovementLine as ml
+			on m.MovementID = ml.MovementID 
+			where MovementCode = 'R2SSA'
+			and cast(m.posteddate as date) >='".$past_30days."' and cast(m.posteddate as date) <='". $end_date."'
+			and (SourceInvoiceNo is not null and SourceInvoiceNo !='')
+			GROUP BY cast(m.posteddate as date),MovementNo,SourceInvoiceNo,Remarks ORDER BY MovementNo
+			";
+		$result = $this->ddb->query($sql);
+		$result = $result->result();
+		return  $result;
+	 }
+
 
     public function get_ms_purchases_franchisee($ms_db){
         $end_date = date('Y-m-d');
-        $past_30days = date('Y-m-d', strtotime('-11 days'));
+        $past_30days = date('Y-m-d', strtotime('-30 days'));
       
 
        $this->ddb = $this->load->database($ms_db, true);
@@ -52,7 +306,7 @@ class Auto_model extends CI_Model {
 
     public function get_ms_sales_franchisee($ms_db){
         $end_date = date('Y-m-d', strtotime('-1 days'));
-        $past_30days = date('Y-m-d', strtotime('-11 days'));
+        $past_30days = date('Y-m-d', strtotime('-32 days'));
       
 
        $this->ddb = $this->load->database($ms_db, true);
@@ -259,10 +513,15 @@ class Auto_model extends CI_Model {
 		
 		$this->db = $this->load->database("pricing_db_ms", true);
 		$branch_name = BRANCH_NAME;
-		$sql = "select  TOP 50 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
-	   $res = $this->db->query($sql);
-	   $res = $res->result_array();
-	   return $res;
+		//$sql = "select  TOP 500 * from comstore_srp_update where throw = 0 and  br_code = '".$branch_name ."'";
+		$sql = "SELECT TOP 500 csu.id,csu.barcode,csu.pricemodecode,csu.uom,csu.srp,csu.throw,csu.br_code,isnull(csu.uomqty,uom.Qty) as uomqty
+				FROM [dbo].[comstore_srp_update] as csu
+				LEFT JOIN UOM as uom
+				on csu.uom = uom.UOM
+				where throw = 0 and  br_code = '".$branch_name ."'";
+	   	$res = $this->db->query($sql);
+	   	$res = $res->result_array();
+	   	return $res;
 	}
 
 	public function insert_new_modifed_srp(){
@@ -291,7 +550,7 @@ class Auto_model extends CI_Model {
 		from comstore_srp_update as a
 		LEFT JOIN POS_Products as b
 		on a.barcode = b.Barcode
-		where a.srp != b.srp and a.br_code = '".$branch_name."' ";
+		where a.srp < b.srp and a.br_code = '".$branch_name."' ";
 
 	   $res = $this->db->query($sql);
 	   if($res){
@@ -306,7 +565,7 @@ class Auto_model extends CI_Model {
 		select ".$order_id.",b.barcode,b.description,(b.qty - served_qty) as qty,b.srp,((b.qty - served_qty)*b.srp) as subtotal,b.category from order_header_franchisee as a LEFT JOIN 
 		order_details_franchisee as b
 		on a.order_id = b.order_id
-		where a.TerminalNo is not null AND a.date_served >='2022-08-29' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
+		where a.TerminalNo is not null AND a.date_served >='2023-01-01' and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
 		and re_order_id is null and a.order_id ='".$old_ord."'
 		HAVING qty >= 1
 		ORDER BY a.order_id
@@ -325,10 +584,10 @@ class Auto_model extends CI_Model {
 	   $sql = "UPDATE 
 	   order_details_franchisee  b RIGHT JOIN
 	   `order_header_franchisee`   a  on a.order_id = b.order_id
-	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2022-08-23' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
+	   LEFT JOIN (select Barcode,TransactionNo,TerminalNo,(sum(Qty) - sum(QtyReturned)) as served FROM tfinishedsales where Voided = 0 and cast(logdate as date) >='2023-01-01' GROUP BY Barcode,TransactionNo,TerminalNo )  as  tf 
 	   ON a.TerminalNo = tf.TerminalNo and a.TransactionNo = tf.TransactionNo and b.barcode = tf.Barcode 
 	   SET b.served_qty = CASE WHEN tf.Barcode is null THEN 0 ELSE tf.served  END
-	   where a.TerminalNo is not null AND a.date_served >='2022-08-29' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
+	   where a.TerminalNo is not null AND a.date_served >='2023-01-01' and (b.served_qty is  null  or b.served_qty =0) and re_order_id is null 
 	   ";
 	   //echo $sql;
 	   $res = $this->db->query($sql);
@@ -346,7 +605,7 @@ class Auto_model extends CI_Model {
 				SUM(((b.qty - b.served_qty)*b.srp)) as total from order_header_franchisee as a LEFT JOIN 
 				order_details_franchisee as b
 				on a.order_id = b.order_id
-				where a.TerminalNo is not null AND a.date_served >='2022-08-29'
+				where a.TerminalNo is not null AND a.date_served >='2023-01-01'
 				and category NOT IN('10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041')
 				and re_order_id is null  
 				GROUP BY a.order_id,customer_name
@@ -397,7 +656,9 @@ class Auto_model extends CI_Model {
 	 public function get_res_for_trans($TransactionNo,$TerminalNo){ 
 		//$this->db = $this->load->database("mysql_pos_db_franchisee", true);
 		$this->db = $this->load->database("mysql_pos_db", true);
-		$sql = "select ProductID as stock_id,ProductID as stock_id_2,Description as description ,Barcode as barcode,UOM as uom,Price as cost ,price as net_of_vat ,sum(Qty) as qty_out, sum(Qty) as actual_qty_out 
+		$sql = "select ProductID as stock_id,ProductID as stock_id_2,Description as description,
+		Barcode as barcode,UOM as uom,IFNULL(Price,0) as cost ,
+		IFNULL(price,0) as net_of_vat ,sum(Qty) as qty_out, sum(Qty) as actual_qty_out  
 		from tfinishedsales where TransactionNo='".$TransactionNo."' and TerminalNo ='".$TerminalNo."'
 		and Voided = 0 and `Return` = 0
 		GROUP BY productID,ProductID,Description,Barcode,UOM,Price,price
@@ -450,6 +711,7 @@ class Auto_model extends CI_Model {
 			$this->db->query($sql);
 	     }
     }
+
     public function get_customer_code(){
         $array = array();
     	$this->db = $this->load->database("default", true); 
@@ -612,7 +874,7 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		WHERE cast(LogDate as date) >=DATE_SUB(now(), INTERVAL 1 MONTH) and  cast(LogDate as date) <=now() 
 		GROUP BY ProductID)
 		GROUP BY ProductID ORDER BY productid) as fs
-		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.98 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
+		LEFT JOIN (select  productid,sellingarea,CASE WHEN products.LevelField1Code = 9019 THEN 0.9975 ELSE 0.975 END as srs_percentage, LevelField1Code,inactive from  products ) as pp
 		on fs.ProductID = pp.productid
 		where pp.LevelField1Code  not in ('10055','10050','10053','10055','10050','10053','10021','10056','10057','10058','10059','10060','10061','10062','10063','10064','10065','10066','9041') and pp.inactive = 0
 		ORDER BY Description";
@@ -876,17 +1138,25 @@ function overstock_offtake($from,$to,$items=array(), $days = 30){
 		$sql ="SELECT (CASE WHEN isnull(max(order_id)) THEN 0 ELSE max(order_id) END)+1 as order_id FROM `order_header_franchisee`;";
 		$res = $this->db->query($sql);
 		$res = $res->row();
-      return $res->order_id;
+     	 return $res->order_id;
     }
 
+	function check_created_po($date , $branch){
+		$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$sql ="SELECT count(order_id) as order_id FROM order_header_franchisee where order_date ='".$date."' and customer_name = '".$branch."' ";
+		$res = $this->pos_db->query($sql);
+		$res = $res->row();
+     	 return $res->order_id;
+	}
+
 	function insert_batch($data=array()){
-		$this->db = $this->load->database("mysql_pos_db", True);
-		$this->db->insert_batch("order_details_franchisee", $data);
+		//$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$this->pos_db->insert_batch("order_details_franchisee", $data);
 	}
 
 	function insert($data=array()){
-		$this->db = $this->load->database("mysql_pos_db", True);
-		$this->db->insert("order_header_franchisee", $data);
+		//$this->pos_db = $this->load->database("mysql_pos_db", True);
+		$this->pos_db->insert("order_header_franchisee", $data);
 	}
 
 	function must_have_seven_days_sale($date = null){
